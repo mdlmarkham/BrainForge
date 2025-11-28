@@ -1,0 +1,469 @@
+openapi: 3.1.0
+info:
+  title: BrainForge AI Knowledge Base API
+  description: API for AI-powered knowledge management with constitutional compliance
+  version: 1.0.0
+  contact:
+    name: BrainForge Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+
+paths:
+  /notes:
+    get:
+      summary: List notes with filtering and search
+      description: Supports metadata filtering and semantic search (hybrid search)
+      parameters:
+        - name: note_type
+          in: query
+          schema:
+            type: string
+            enum: [fleeting, literature, permanent, insight, agent_generated]
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: semantic_query
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: Notes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Note'
+                  total_count:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+    post:
+      summary: Create a new note
+      description: Creates a note with constitutional compliance (provenance, versioning)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteCreate'
+      responses:
+        '201':
+          description: Note created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /notes/{note_id}:
+    get:
+      summary: Get a specific note
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Note retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update a note
+      description: Updates a note with versioning and conflict detection
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteUpdate'
+      responses:
+        '200':
+          description: Note updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+        '409':
+          description: Version conflict
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a note
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Note deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /notes/{note_id}/versions:
+    get:
+      summary: Get version history for a note
+      parameters:
+        - name: note_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Version history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VersionHistory'
+
+  /agent/runs:
+    post:
+      summary: Execute an agent workflow
+      description: Runs an AI agent with constitutional compliance (audit trails, human review)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentRunRequest'
+      responses:
+        '202':
+          description: Agent run accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /agent/runs/{run_id}:
+    get:
+      summary: Get agent run status
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agent run status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentRun'
+
+  /agent/runs/{run_id}/review:
+    post:
+      summary: Submit human review for agent run
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewSubmission'
+      responses:
+        '200':
+          description: Review submitted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /ingestion:
+    post:
+      summary: Ingest external content
+      description: Ingest PDF, web content, or text with constitutional data governance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestionRequest'
+      responses:
+        '202':
+          description: Ingestion process started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ingestion_id:
+                    type: string
+                    format: uuid
+
+components:
+  schemas:
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        note_type:
+          type: string
+          enum: [fleeting, literature, permanent, insight, agent_generated]
+        metadata:
+          type: object
+        provenance:
+          type: object
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        is_ai_generated:
+          type: boolean
+        ai_justification:
+          type: string
+          nullable: true
+
+    NoteCreate:
+      type: object
+      required:
+        - content
+        - note_type
+        - created_by
+      properties:
+        content:
+          type: string
+        note_type:
+          type: string
+          enum: [fleeting, literature, permanent, insight, agent_generated]
+        metadata:
+          type: object
+          default: {}
+        provenance:
+          type: object
+          default: {}
+        created_by:
+          type: string
+        is_ai_generated:
+          type: boolean
+          default: false
+        ai_justification:
+          type: string
+          nullable: true
+
+    NoteUpdate:
+      type: object
+      required:
+        - content
+        - version
+      properties:
+        content:
+          type: string
+        metadata:
+          type: object
+        version:
+          type: integer
+        change_reason:
+          type: string
+          nullable: true
+
+    VersionHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        note_id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        content:
+          type: string
+        metadata:
+          type: object
+        changes:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        created_by:
+          type: string
+        change_reason:
+          type: string
+          nullable: true
+
+    AgentRunRequest:
+      type: object
+      required:
+        - agent_name
+        - agent_version
+        - input_parameters
+      properties:
+        agent_name:
+          type: string
+        agent_version:
+          type: string
+        input_parameters:
+          type: object
+
+    AgentRun:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        agent_name:
+          type: string
+        agent_version:
+          type: string
+        input_parameters:
+          type: object
+        output_note_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum: [success, failed, pending_review]
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_details:
+          type: string
+          nullable: true
+        human_reviewer:
+          type: string
+          nullable: true
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+        review_status:
+          type: string
+          enum: [approved, rejected, needs_revision]
+          nullable: true
+
+    ReviewSubmission:
+      type: object
+      required:
+        - reviewer
+        - review_status
+      properties:
+        reviewer:
+          type: string
+        review_status:
+          type: string
+          enum: [approved, rejected, needs_revision]
+        review_notes:
+          type: string
+          nullable: true
+
+    IngestionRequest:
+      type: object
+      required:
+        - source_type
+        - source
+      properties:
+        source_type:
+          type: string
+          enum: [pdf, web, text, markdown]
+        source:
+          type: string
+        metadata:
+          type: object
+          default: {}
+        chunking_policy:
+          type: string
+          enum: [none, paragraph, section]
+          default: paragraph
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: object
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              resource_id:
+                type: string
+
+tags:
+  - name: Notes
+    description: Note management operations
+  - name: Agent
+    description: AI agent workflows with constitutional compliance
+  - name: Ingestion
+    description: External content ingestion

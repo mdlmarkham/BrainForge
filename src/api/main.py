@@ -1,0 +1,61 @@
+"""BrainForge AI Knowledge Base - FastAPI main application."""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from .routes import agent, ingestion, notes, search, vault
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+
+    app = FastAPI(
+        title="BrainForge AI Knowledge Base",
+        description="AI-powered personal knowledge management system with constitutional compliance",
+        version="1.0.0",
+        docs_url="/docs",
+        redoc_url="/redoc",
+    )
+
+    # Configure CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Include routers
+    app.include_router(notes.router, prefix="/api/v1", tags=["Notes"])
+    app.include_router(search.router, prefix="/api/v1", tags=["Search"])
+    app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
+    app.include_router(ingestion.router, prefix="/api/v1", tags=["Ingestion"])
+    app.include_router(vault.router, prefix="/api/v1", tags=["Vault"])
+
+    # Health check endpoint
+    @app.get("/health")
+    async def health_check():
+        """Health check endpoint for monitoring."""
+        return {"status": "healthy", "service": "brainforge"}
+
+    # Root endpoint
+    @app.get("/")
+    async def root():
+        """Root endpoint with API information."""
+        return {
+            "message": "BrainForge AI Knowledge Base API",
+            "version": "1.0.0",
+            "docs": "/docs"
+        }
+
+    return app
+
+
+# Create the application instance
+app = create_app()
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
