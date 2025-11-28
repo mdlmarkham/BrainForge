@@ -76,7 +76,11 @@ BrainForge/
 
 5. **Run database migrations**
    ```bash
-   python -m src.cli.migrate
+   # Using the CLI
+   python src/cli/migrate.py run
+   
+   # Or using Alembic directly
+   alembic upgrade head
    ```
 
 6. **Start the development server**
@@ -128,6 +132,42 @@ ruff check src/
 - `GET /api/v1/agent/runs/{id}` - Get agent run status
 
 ## 🔧 Development
+
+### Database Migrations
+
+BrainForge uses Alembic for database migrations with async SQLAlchemy support.
+
+#### Migration Commands
+
+```bash
+# Run all pending migrations
+python src/cli/migrate.py run
+
+# Show current migration status
+python src/cli/migrate.py status
+
+# Create a new migration (autogenerate)
+python src/cli/migrate.py create "Add new feature"
+
+# Using Alembic directly
+alembic upgrade head
+alembic downgrade -1
+alembic history
+```
+
+#### Migration Features
+
+- **PostgreSQL Extensions**: Automatically installs `pgcrypto` and `vector` extensions
+- **Async Support**: Uses async SQLAlchemy with connection pooling
+- **Constitutional Compliance**: All models include required fields for auditability
+- **Version Control**: Full migration history with rollback capability
+
+#### Testing Migrations
+
+```bash
+# Run migration tests (requires TEST_DATABASE_URL)
+pytest tests/test_migrations.py -v
+```
 
 ### Code Style
 

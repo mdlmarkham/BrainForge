@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.compliance.constitution import ComplianceMiddleware, create_compliance_exception_handler
 
-from .routes import agent, ingestion, notes, search, vault
+from .routes import agent, ingestion, notes, search, vault, obsidian
 
 
 def create_app() -> FastAPI:
@@ -40,6 +40,7 @@ def create_app() -> FastAPI:
     app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
     app.include_router(ingestion.router, prefix="/api/v1", tags=["Ingestion"])
     app.include_router(vault.router, prefix="/api/v1", tags=["Vault"])
+    app.include_router(obsidian.router, prefix="/api/v1", tags=["Obsidian"])
 
     # Health check endpoint
     @app.get("/health")

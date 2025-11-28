@@ -1,133 +1,114 @@
-"""Database service implementation for BrainForge."""
+"""Database service implementation for BrainForge with async SQLAlchemy."""
 
-import logging
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from .base import BaseService
-from ..models.note import Note, NoteCreate, NoteUpdate
-from ..models.link import Link, LinkCreate
-from ..models.embedding import Embedding, EmbeddingCreate
-from ..models.version_history import VersionHistory, VersionHistoryCreate
-from ..models.agent_run import AgentRun, AgentRunCreate
-
-logger = logging.getLogger(__name__)
+from ..models.orm.note import Note
+from ..models.orm.link import Link
+from ..models.orm.embedding import Embedding
+from ..models.orm.agent_run import AgentRun
+from ..models.orm.version_history import VersionHistory
 
 
-class DatabaseService(BaseService):
-    """Database service implementation using SQLAlchemy."""
-    
-    def __init__(self, database_url: str):
-        self.engine = create_engine(database_url)
-        self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
-    
-    async def create(self, data: Any) -> Any:
-        """Create a new entity in the database."""
-        # This is a placeholder implementation
-        # In a real implementation, this would use SQLAlchemy ORM
-        logger.info(f"Creating entity: {type(data).__name__}")
-        return data
-    
-    async def get(self, id: UUID) -> Any | None:
-        """Get an entity by ID from the database."""
-        # This is a placeholder implementation
-        logger.info(f"Getting entity with ID: {id}")
-        return None
-    
-    async def list(self, skip: int = 0, limit: int = 100) -> list[Any]:
-        """List entities from the database with pagination."""
-        # This is a placeholder implementation
-        logger.info(f"Listing entities with skip={skip}, limit={limit}")
-        return []
-    
-    async def update(self, id: UUID, data: Any) -> Any | None:
-        """Update an entity in the database."""
-        # This is a placeholder implementation
-        logger.info(f"Updating entity with ID: {id}")
-        return data
-    
-    async def delete(self, id: UUID) -> bool:
-        """Delete an entity from the database."""
-        # This is a placeholder implementation
-        logger.info(f"Deleting entity with ID: {id}")
-        return True
-
-
-class NoteService(DatabaseService):
+class NoteService(BaseService[Note]):
     """Note-specific database service."""
     
-    async def create(self, data: NoteCreate) -> Note:
-        """Create a new note."""
-        return await super().create(data)
+    def __init__(self):
+        super().__init__(Note)
     
-    async def get(self, id: UUID) -> Note | None:
-        """Get a note by ID."""
-        return await super().get(id)
+    async def get_by_type(self, session: AsyncSession, note_type: str, skip: int = 0, limit: int = 100) -> list[Note]:
+        """Get notes by type with pagination."""
+        stmt = select(Note).where(Note.note_type == note_type).offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        return result.scalars().all()
     
-    async def list(self, skip: int = 0, limit: int = 100) -> list[Note]:
-        """List notes with pagination."""
-        return await super().list(skip, limit)
-    
-    async def update(self, id: UUID, data: NoteUpdate) -> Note | None:
-        """Update a note."""
-        return await super().update(id, data)
-    
-    async def delete(self, id: UUID) -> bool:
-        """Delete a note."""
-        return await super().delete(id)
+    async def get_ai_generated(self, session: AsyncSession, skip: int = 0, limit: int = 100) -> list[Note]:
+        """Get AI-generated notes with pagination."""
+        stmt = select(Note).where(Note.is_ai_generated == True).offset(skip).limit(limit)
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
 
-class LinkService(DatabaseService):
+class LinkService(BaseService[Link]):
     """Link-specific database service."""
     
-    async def create(self, data: LinkCreate) -> Link:
-        """Create a new link."""
-        return await super().create(data)
+    def __init__(self):
+        super().__init__(Link)
     
-    async def get(self, id: UUID) -> Link | None:
-        """Get a link by ID."""
-        return await super().get(id)
+    async def get_by_source(self, session: AsyncSession, source_note_id: UUID) -> list[Link]:
+        """Get links by source note ID."""
+        stmt = select(Link).where(Link.source_note_id == source_note_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
     
-    async def list(self, skip: int = 0, limit: int = 100) -> list[Link]:
-        """List links with pagination."""
-        return await super().list(skip, limit)
-    
-    async def delete(self, id: UUID) -> bool:
-        """Delete a link."""
-        return await super().delete(id)
+    async def get_by_target(self, session: AsyncSession, target_note_id: UUID) -> list[Link]:
+        """Get links by target note ID."""
+        stmt = select(Link).where(Link.target_note_id == target_note_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
 
-class EmbeddingService(DatabaseService):
+class EmbeddingService(BaseService[Embedding]):
     """Embedding-specific database service."""
     
-    async def create(self, data: EmbeddingCreate) -> Embedding:
-        """Create a new embedding."""
-        return await super().create(data)
+    def __init__(self):
+        super().__init__(Embedding)
     
-    async def get(self, id: UUID) -> Embedding | None:
-        """Get an embedding by ID."""
-        return await super().get(id)
+    async def get_by_note(self, session: AsyncSession, note_id: UUID) -> list[Embedding]:
+        """Get embeddings by note ID."""
+        stmt = select(Embedding).where(Embedding.note_id == note_id)
+        result = await session.execute(stmt)
+        return result.scalars().all()
     
-    async def list(self, skip: int = 0, limit: int = 100) -> list[Embedding]:
-        """List embeddings with pagination."""
-        return await super().list(skip, limit)
+    async def get_by_model_version(self, session: AsyncSession, model_version: str) -> list[Embedding]:
+        """Get embeddings by model version."""
+        stmt = select(Embedding).where(Embedding.model_version == model_version)
+        result = await session.execute(stmt)
+        return result.scalars().all()
 
 
-class AgentRunService(DatabaseService):
+class AgentRunService(BaseService[AgentRun]):
     """Agent run-specific database service."""
     
-    async def create(self, data: AgentRunCreate) -> AgentRun:
-        """Create a new agent run."""
-        return await super().create(data)
+    def __init__(self):
+        super().__init__(AgentRun)
     
-    async def get(self, id: UUID) -> AgentRun | None:
-        """Get an agent run by ID."""
-        return await super().get(id)
+    async def get_by_status(self, session: AsyncSession, status: str) -> list[AgentRun]:
+        """Get agent runs by status."""
+        stmt = select(AgentRun).where(AgentRun.status == status)
+        result = await session.execute(stmt)
+        return result.scalars().all()
     
-    async def list(self, skip: int = 0, limit: int = 100) -> list[AgentRun]:
-        """List agent runs with pagination."""
-        return await super().list(skip, limit)
+    async def get_by_agent(self, session: AsyncSession, agent_name: str, agent_version: str | None = None) -> list[AgentRun]:
+        """Get agent runs by agent name and optionally version."""
+        stmt = select(AgentRun).where(AgentRun.agent_name == agent_name)
+        if agent_version:
+            stmt = stmt.where(AgentRun.agent_version == agent_version)
+        result = await session.execute(stmt)
+        return result.scalars().all()
+
+
+class VersionHistoryService(BaseService[VersionHistory]):
+    """Version history-specific database service."""
+    
+    def __init__(self):
+        super().__init__(VersionHistory)
+    
+    async def get_by_note(self, session: AsyncSession, note_id: UUID) -> list[VersionHistory]:
+        """Get version history by note ID."""
+        stmt = select(VersionHistory).where(VersionHistory.note_id == note_id).order_by(VersionHistory.version.desc())
+        result = await session.execute(stmt)
+        return result.scalars().all()
+    
+    async def get_by_note_and_version(self, session: AsyncSession, note_id: UUID, version: int) -> VersionHistory | None:
+        """Get specific version of a note."""
+        stmt = select(VersionHistory).where(
+            VersionHistory.note_id == note_id,
+            VersionHistory.version == version
+        )
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
