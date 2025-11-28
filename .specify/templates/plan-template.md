@@ -31,7 +31,18 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Structured Data Foundation**: Verify data models are defined before AI integration
+**AI Agent Integration**: Ensure audit trails and human review gates are planned
+**Versioning & Auditability**: Confirm version history and rollback mechanisms
+**Test-First Development**: Validate test coverage for critical data operations
+**Progressive Enhancement**: Check that core functionality works without AI dependencies
+**Roles & Permissions**: Define user/agent roles and approval workflows
+**Data Governance**: Plan for external content validation and sensitive data handling
+**Error Handling**: Design recovery mechanisms for all operations
+**AI Versioning**: Establish agent version tracking and behavior verification
+**Human-in-the-Loop**: Include explainability standards and review cycles
+
+*Failure to pass any gate requires constitutional amendment or feature redesign*
 
 ## Project Structure
 

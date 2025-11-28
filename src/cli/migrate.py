@@ -98,6 +98,53 @@ CREATE INDEX IF NOT EXISTS idx_version_history_note_version ON version_history(n
 """
 
 
+def execute_migration(db_url: str, migration_sql: str) -> bool:
+    """Execute the migration SQL against the database."""
+    try:
+        import sqlalchemy as sa
+        
+        # Create engine and connection
+        engine = sa.create_engine(db_url)
+        connection = engine.connect()
+        
+        # Execute the migration in a transaction
+        with connection.begin() as transaction:
+            # Split SQL into individual statements
+            statements = [stmt.strip() for stmt in migration_sql.split(';') if stmt.strip()]
+            
+            for statement in statements:
+                if statement:  # Skip empty statements
+                    connection.execute(sa.text(statement))
+            
+            transaction.commit()
+        
+        connection.close()
+        return True
+        
+    except Exception as e:
+        print(f"Error executing migration: {e}")
+        return False
+
+
+def validate_database_connection(db_url: str) -> bool:
+    """Validate database connection and permissions."""
+    try:
+        import sqlalchemy as sa
+        
+        engine = sa.create_engine(db_url)
+        connection = engine.connect()
+        
+        # Test basic connection and permissions
+        result = connection.execute(sa.text("SELECT 1"))
+        connection.close()
+        
+        return True
+        
+    except Exception as e:
+        print(f"Database connection error: {e}")
+        return False
+
+
 def main():
     """Main migration function."""
     print("BrainForge Database Migration")
@@ -110,17 +157,25 @@ def main():
         print("Please set DATABASE_URL to your PostgreSQL connection string")
         sys.exit(1)
 
+    # Validate database connection
+    print("Validating database connection...")
+    if not validate_database_connection(db_url):
+        print("Failed to connect to database. Please check your DATABASE_URL and database permissions.")
+        sys.exit(1)
+    
+    print("✓ Database connection validated")
+
     # Create migration script
     migration_sql = create_migration_script()
 
-    # For now, just print the SQL script
-    # In a real implementation, we would execute this against the database
-    print("Migration SQL script:")
-    print(migration_sql)
-    print("\nNote: This is a placeholder implementation.")
-    print("In a real deployment, this script would execute the SQL against the database.")
-
-    return 0
+    # Execute migration
+    print("Executing migration...")
+    if execute_migration(db_url, migration_sql):
+        print("✓ Migration completed successfully")
+        return 0
+    else:
+        print("✗ Migration failed")
+        return 1
 
 
 if __name__ == "__main__":

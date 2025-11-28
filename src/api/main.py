@@ -3,6 +3,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.compliance.constitution import ComplianceMiddleware, create_compliance_exception_handler
+
 from .routes import agent, ingestion, notes, search, vault
 
 
@@ -17,6 +19,9 @@ def create_app() -> FastAPI:
         redoc_url="/redoc",
     )
 
+    # Add compliance middleware
+    app.add_middleware(ComplianceMiddleware)
+
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
@@ -25,6 +30,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Add compliance exception handler
+    app.add_exception_handler(Exception, create_compliance_exception_handler())
 
     # Include routers
     app.include_router(notes.router, prefix="/api/v1", tags=["Notes"])

@@ -1,50 +1,108 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# BrainForge Constitution
+
+<!--
+Sync Impact Report:
+- Version change: 1.0.0 → 1.1.0 (MINOR: Added comprehensive AI governance principles)
+- Modified principles: Expanded from 5 to 10 core principles with detailed AI governance
+- Added sections: Roles/Permissions, Data Governance, Error Handling, AI Versioning, Human-in-the-Loop
+- Removed sections: None - enhanced existing framework
+- Templates requiring updates:
+  ✅ plan-template.md (Constitution Check section updated)
+  ✅ spec-template.md (Scope alignment verified)
+  ✅ tasks-template.md (Task categorization aligned)
+  ⚠ agent-file-template.md (Pending review - not found in current structure)
+- Follow-up TODOs: None - comprehensive coverage achieved
+-->
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Structured Data Foundation
+Every feature MUST be built upon clear, well-defined data models that support both human and AI interaction. Data schemas MUST be versioned, extensible, and maintain backward compatibility. Interfaces between components MUST be explicit and documented, with clear boundaries between core data operations and AI-enhanced capabilities.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+**Rationale**: BrainForge's value comes from reliable knowledge management. Clear data structures ensure consistency across human and AI interactions while allowing for future AI enhancements.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. AI Agent Integration (NON-NEGOTIABLE)
+AI agents MUST operate through well-defined APIs with clear input/output contracts. All AI-generated content MUST be explicitly marked with provenance metadata. Agent actions MUST be logged with complete audit trails. Human review gates MUST be available for critical AI operations.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Balancing AI flexibility with control requires clear boundaries. Auditability ensures trust in AI-generated knowledge while maintaining human oversight.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Versioning & Auditability
+Every note modification MUST preserve version history with complete change tracking. AI-generated content MUST be distinguishable from human-authored content. Rollback capabilities MUST be available for all data operations. Conflict resolution mechanisms MUST handle AI-human collaboration scenarios.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+**Rationale**: Knowledge integrity requires traceability. Versioning enables safe experimentation with AI capabilities while preserving data reliability.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Test-First Development
+Critical data operations MUST have comprehensive test coverage before AI integration. AI agent interfaces MUST be contract-tested. Data migration paths MUST be validated before deployment. Performance benchmarks MUST be established for AI-enhanced workflows.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Reliability in AI-human systems requires rigorous testing. Test-first approach prevents AI complexity from compromising system stability.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Progressive Enhancement
+Core functionality MUST work without AI dependencies. AI features MUST be additive, not replacement. Simple workflows MUST remain accessible. Complex AI capabilities MUST be optional and clearly documented.
+
+**Rationale**: Maintains system usability while allowing sophisticated AI integration. Ensures the system remains valuable even when AI components are unavailable.
+
+### VI. Roles, Permissions, and Ownership
+User roles MUST be clearly defined (Owner, Agent, Reviewer) with associated permissions (create, edit, finalize, delete, review). Agent outputs marked as "final" MUST pass human review and approval before integration into the canonical knowledge base. All edits MUST record user or agent identity with timestamp.
+
+**Rationale**: Clear role definitions prevent unauthorized modifications and ensure accountability in AI-human collaboration.
+
+### VII. Data Governance & External Content Policy
+External content ingestion MUST include source metadata, license information, and format validation. Sensitive content MUST be encrypted with access restrictions. Data retention and deletion policies MUST be defined for outdated or deprecated notes.
+
+**Rationale**: Protects intellectual property rights and ensures proper handling of sensitive information throughout the knowledge lifecycle.
+
+### VIII. Error Handling & Recovery Policy
+All operations (ingestion, embedding, agent-writing, sync) MUST implement error detection, retry logic, and comprehensive logging. The system MUST support periodic backups with restore/rollback tools. Embedding or index corruption MUST be detectable with re-indexing capabilities.
+
+**Rationale**: Ensures system resilience and data integrity through robust error recovery mechanisms.
+
+### IX. AI Agent Versioning & Governance
+Each deployed agent MUST carry a version identifier with changes tracked in version control. New agent versions MUST pass behavior verification tests before deployment. Agent-generated content MUST include: agent name/version, timestamp, input sources, confidence metadata, and human reviewer approval for final status.
+
+**Rationale**: Maintains control over AI behavior evolution and ensures traceability of agent-generated content.
+
+### X. Human-in-the-Loop & Explainability Standard
+AI-generated content MUST include justification/rationale in structured metadata. Regular human review cycles MUST validate AI-generated content for accuracy, relevance, and timeliness. Outdated or inaccurate information MUST be pruned or updated.
+
+**Rationale**: Ensures AI outputs remain trustworthy and maintainable through human oversight and transparent reasoning.
+
+## Development Constraints
+
+### Technology Standards
+- Primary language: Python 3.11+ for AI integration capabilities
+- Database: PostgreSQL with vector extensions for semantic search
+- API standards: RESTful interfaces with OpenAPI documentation
+- Testing: pytest with contract testing for AI agent interfaces
+- Deployment: Containerized with clear environment separation
+
+### Quality Gates
+- All data model changes MUST pass backward compatibility checks
+- AI agent integrations MUST include human review workflows
+- Performance benchmarks MUST be maintained for search and ingestion
+- Security reviews REQUIRED for external content processing
+
+## Development Workflow
+
+### Feature Implementation
+1. **Data Model First**: Define clear data structures before AI integration
+2. **Human Workflow Validation**: Ensure manual operations work reliably
+3. **AI Enhancement**: Add AI capabilities as optional extensions
+4. **Integration Testing**: Validate AI-human collaboration scenarios
+
+### Review Process
+- Data schema changes REQUIRE architectural review
+- AI agent integrations REQUIRE security and auditability review
+- Performance-impacting changes REQUIRE benchmark validation
+- All changes MUST maintain backward compatibility for existing data
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices. Amendments require:
+1. Documentation of the change rationale
+2. Impact analysis on existing AI-human workflows
+3. Migration plan for any breaking changes
+4. Approval through the established review process
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+All feature implementations MUST verify compliance with these principles. Complexity introduced by AI integration MUST be justified by clear user value. Use the BrainForge SRS for specific implementation guidance.
+
+**Version**: 1.1.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-28

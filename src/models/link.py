@@ -3,7 +3,7 @@
 from enum import Enum
 from uuid import UUID
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator, ValidationInfo
 
 from .base import BaseEntity, ProvenanceMixin
 
@@ -25,16 +25,39 @@ class LinkBase(ProvenanceMixin):
     target_note_id: UUID = Field(..., description="Target note ID")
     relation_type: RelationType = Field(..., description="Type of relationship")
 
+    @field_validator('source_note_id', 'target_note_id')
     @classmethod
-    def validate_self_referential(cls, values: dict) -> dict:
+    def validate_self_referential(cls, v: UUID, info: ValidationInfo) -> UUID:
         """Validate that source and target are different notes."""
-        source_id = values.get('source_note_id')
-        target_id = values.get('target_note_id')
+        if info.field_name == 'source_note_id':
+            target_id = info.data.get('target_note_id')
+            if target_id and v == target_id:
+                raise ValueError("Cannot create self-referential links")
+        elif info.field_name == 'target_note_id':
+            source_id = info.data.get('source_note_id')
+            if source_id and v == source_id:
+                raise ValueError("Cannot create self-referential links")
+        return v
 
-        if source_id and target_id and source_id == target_id:
-            raise ValueError("Cannot create self-referential links")
+    @field_validator('relation_type')
+    @classmethod
+    def validate_relation_type(cls, v: RelationType) -> RelationType:
+        """Validate relation type constraints."""
+        # Add business logic for relation type validation if needed
+        return v
 
-        return values
+    @field_validator('provenance')
+    @classmethod
+    def validate_provenance_metadata(cls, v: dict) -> dict:
+        """Validate provenance metadata structure."""
+        if not isinstance(v, dict):
+            raise ValueError("Provenance must be a dictionary")
+        
+        # Validate provenance-specific fields
+        if 'created_by' not in v:
+            raise ValueError("Provenance must include 'created_by' field")
+        
+        return v
 
 
 class LinkCreate(LinkBase):
