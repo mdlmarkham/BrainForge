@@ -7,12 +7,19 @@ from .link import Link, LinkCreate
 from .agent_run import AgentRun, AgentRunCreate
 from .version_history import VersionHistory, VersionHistoryCreate
 from .search import (
-    SearchRequest, 
-    SearchResponse, 
-    SearchResult, 
-    SearchStats, 
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+    SearchStats,
     SearchHealth
 )
+from .ingestion import IngestionTask, IngestionTaskCreate, IngestionTaskUpdate, ContentType, ProcessingState
+from .content_source import ContentSource, ContentSourceCreate, ContentSourceUpdate
+from .processing_result import ProcessingResult, ProcessingResultCreate, ProcessingResultUpdate
+from .pdf_metadata import PDFMetadata, PDFMetadataCreate, PDFMetadataUpdate
+from .pdf_processing_result import PDFProcessingResult, PDFProcessingResultCreate, PDFProcessingResultUpdate
+from .review_queue import ReviewQueue, ReviewQueueCreate, ReviewQueueUpdate, ReviewStatus
+from .audit_trail import AuditTrail, AuditTrailCreate, AuditTrailUpdate
 
 __all__ = [
     "BaseEntity",
@@ -35,5 +42,29 @@ __all__ = [
     "SearchResponse",
     "SearchResult",
     "SearchStats",
-    "SearchHealth"
+    "SearchHealth",
+    "IngestionTask",
+    "IngestionTaskCreate",
+    "IngestionTaskUpdate",
+    "ContentType",
+    "ProcessingState",
+    "ContentSource",
+    "ContentSourceCreate",
+    "ContentSourceUpdate",
+    "ProcessingResult",
+    "ProcessingResultCreate",
+    "ProcessingResultUpdate",
+    "PDFMetadata",
+    "PDFMetadataCreate",
+    "PDFMetadataUpdate",
+    "PDFProcessingResult",
+    "PDFProcessingResultCreate",
+    "PDFProcessingResultUpdate",
+    "ReviewQueue",
+    "ReviewQueueCreate",
+    "ReviewQueueUpdate",
+    "ReviewStatus",
+    "AuditTrail",
+    "AuditTrailCreate",
+    "AuditTrailUpdate"
 ]

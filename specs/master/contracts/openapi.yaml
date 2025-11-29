@@ -1,469 +1,303 @@
 openapi: 3.1.0
 info:
-  title: BrainForge AI Knowledge Base API
-  description: API for AI-powered knowledge management with constitutional compliance
+  title: BrainForge PDF Processing API
+  description: API endpoints for PDF ingestion and processing with dockling integration
   version: 1.0.0
   contact:
-    name: BrainForge Team
-  license:
-    name: MIT
+    name: BrainForge Development Team
+    email: dev@brainforge.example.com
 
 servers:
-  - url: http://localhost:8000
+  - url: http://localhost:8000/api
     description: Development server
 
 paths:
-  /notes:
-    get:
-      summary: List notes with filtering and search
-      description: Supports metadata filtering and semantic search (hybrid search)
-      parameters:
-        - name: note_type
-          in: query
-          schema:
-            type: string
-            enum: [fleeting, literature, permanent, insight, agent_generated]
-        - name: tags
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-        - name: semantic_query
-          in: query
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-            maximum: 100
-      responses:
-        '200':
-          description: Notes retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  notes:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Note'
-                  total_count:
-                    type: integer
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
+  /ingestion/pdf:
     post:
-      summary: Create a new note
-      description: Creates a note with constitutional compliance (provenance, versioning)
+      summary: Submit PDF for ingestion
+      description: Upload a PDF document for processing and integration into knowledge base
+      tags:
+        - PDF Ingestion
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/NoteCreate'
-      responses:
-        '201':
-          description: Note created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Note'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /notes/{note_id}:
-    get:
-      summary: Get a specific note
-      parameters:
-        - name: note_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Note retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Note'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    put:
-      summary: Update a note
-      description: Updates a note with versioning and conflict detection
-      parameters:
-        - name: note_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/NoteUpdate'
-      responses:
-        '200':
-          description: Note updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Note'
-        '409':
-          description: Version conflict
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    delete:
-      summary: Delete a note
-      parameters:
-        - name: note_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Note deleted successfully
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /notes/{note_id}/versions:
-    get:
-      summary: Get version history for a note
-      parameters:
-        - name: note_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Version history retrieved
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  versions:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/VersionHistory'
-
-  /agent/runs:
-    post:
-      summary: Execute an agent workflow
-      description: Runs an AI agent with constitutional compliance (audit trails, human review)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgentRunRequest'
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: PDF file to process
+                source_url:
+                  type: string
+                  description: Original source URL (optional)
+                tags:
+                  type: array
+                  items:
+                    type: string
+                  description: Initial tags for classification
+                priority:
+                  type: string
+                  enum: [low, normal, high]
+                  default: normal
+                  description: Processing priority
       responses:
         '202':
-          description: Agent run accepted
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentRun'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-
-  /agent/runs/{run_id}:
-    get:
-      summary: Get agent run status
-      parameters:
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Agent run status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AgentRun'
-
-  /agent/runs/{run_id}/review:
-    post:
-      summary: Submit human review for agent run
-      parameters:
-        - name: run_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReviewSubmission'
-      responses:
-        '200':
-          description: Review submitted successfully
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /ingestion:
-    post:
-      summary: Ingest external content
-      description: Ingest PDF, web content, or text with constitutional data governance
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IngestionRequest'
-      responses:
-        '202':
-          description: Ingestion process started
+          description: PDF accepted for processing
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  ingestion_id:
+                  task_id:
                     type: string
                     format: uuid
+                    description: Unique identifier for processing task
+                  status:
+                    type: string
+                    enum: [accepted, validating]
+                    description: Initial processing status
+                  estimated_completion:
+                    type: string
+                    format: date-time
+                    description: Estimated completion time
+        '400':
+          description: Invalid PDF file or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: PDF file too large (>100MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ingestion/pdf/{task_id}:
+    get:
+      summary: Get PDF processing status
+      description: Retrieve current status and results of PDF processing task
+      tags:
+        - PDF Ingestion
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Processing task identifier
+      responses:
+        '200':
+          description: Processing status and results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PDFProcessingStatus'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ingestion/pdf/{task_id}/retry:
+    post:
+      summary: Retry failed PDF processing
+      description: Retry processing for a failed PDF ingestion task
+      tags:
+        - PDF Ingestion
+      parameters:
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Processing task identifier
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                extraction_method:
+                  type: string
+                  enum: [dockling_basic, dockling_advanced]
+                  description: Specific extraction method to use
+      responses:
+        '200':
+          description: Retry initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PDFProcessingStatus'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Task not in failed state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /ingestion/pdf/batch:
+    post:
+      summary: Submit multiple PDFs for batch processing
+      description: Upload multiple PDF documents for batch processing
+      tags:
+        - PDF Ingestion
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: PDF files to process
+                batch_name:
+                  type: string
+                  description: Name for batch processing group
+      responses:
+        '202':
+          description: Batch processing accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batch_id:
+                    type: string
+                    format: uuid
+                    description: Batch processing identifier
+                  task_count:
+                    type: integer
+                    description: Number of PDFs accepted
+                  estimated_completion:
+                    type: string
+                    format: date-time
+                    description: Estimated completion time
 
 components:
   schemas:
-    Note:
+    PDFProcessingStatus:
       type: object
       properties:
-        id:
+        task_id:
           type: string
           format: uuid
-        content:
+          description: Processing task identifier
+        status:
           type: string
-        note_type:
-          type: string
-          enum: [fleeting, literature, permanent, insight, agent_generated]
-        metadata:
-          type: object
-        provenance:
-          type: object
-        version:
+          enum: [validating, extracting_metadata, extracting_text, assessing_quality, summarizing, classifying, awaiting_review, integrated, failed]
+          description: Current processing status
+        progress:
           type: integer
+          minimum: 0
+          maximum: 100
+          description: Processing progress percentage
+        pdf_metadata:
+          $ref: '#/components/schemas/PDFMetadata'
+        extracted_text_preview:
+          type: string
+          description: First 500 characters of extracted text
+        quality_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Text extraction quality score
+        estimated_remaining_time:
+          type: integer
+          description: Estimated remaining processing time in seconds
+        errors:
+          type: array
+          items:
+            type: string
+          description: Processing errors encountered
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-        created_by:
-          type: string
-        is_ai_generated:
-          type: boolean
-        ai_justification:
-          type: string
-          nullable: true
 
-    NoteCreate:
+    PDFMetadata:
       type: object
-      required:
-        - content
-        - note_type
-        - created_by
       properties:
-        content:
-          type: string
-        note_type:
-          type: string
-          enum: [fleeting, literature, permanent, insight, agent_generated]
-        metadata:
-          type: object
-          default: {}
-        provenance:
-          type: object
-          default: {}
-        created_by:
-          type: string
-        is_ai_generated:
-          type: boolean
-          default: false
-        ai_justification:
-          type: string
-          nullable: true
-
-    NoteUpdate:
-      type: object
-      required:
-        - content
-        - version
-      properties:
-        content:
-          type: string
-        metadata:
-          type: object
-        version:
+        page_count:
           type: integer
-        change_reason:
+          description: Number of pages in PDF
+        author:
           type: string
           nullable: true
-
-    VersionHistory:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        note_id:
-          type: string
-          format: uuid
-        version:
-          type: integer
-        content:
-          type: string
-        metadata:
-          type: object
-        changes:
-          type: object
-        created_at:
-          type: string
-          format: date-time
-        created_by:
-          type: string
-        change_reason:
+          description: Document author
+        title:
           type: string
           nullable: true
-
-    AgentRunRequest:
-      type: object
-      required:
-        - agent_name
-        - agent_version
-        - input_parameters
-      properties:
-        agent_name:
+          description: Document title
+        subject:
           type: string
-        agent_version:
-          type: string
-        input_parameters:
-          type: object
-
-    AgentRun:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        agent_name:
-          type: string
-        agent_version:
-          type: string
-        input_parameters:
-          type: object
-        output_note_ids:
-          type: array
-          items:
-            type: string
-            format: uuid
-        status:
-          type: string
-          enum: [success, failed, pending_review]
-        started_at:
-          type: string
-          format: date-time
-        completed_at:
+          nullable: true
+          description: Document subject
+        creation_date:
           type: string
           format: date-time
           nullable: true
-        error_details:
-          type: string
-          nullable: true
-        human_reviewer:
-          type: string
-          nullable: true
-        reviewed_at:
+          description: PDF creation date
+        modification_date:
           type: string
           format: date-time
           nullable: true
-        review_status:
+          description: PDF modification date
+        pdf_version:
           type: string
-          enum: [approved, rejected, needs_revision]
-          nullable: true
+          description: PDF version
+        encryption_status:
+          type: string
+          enum: [none, password, certificate]
+          description: Encryption status
+        extraction_method:
+          type: string
+          description: Text extraction method used
+        extraction_quality_score:
+          type: number
+          format: float
+          description: Quality score of text extraction
 
-    ReviewSubmission:
+    ErrorResponse:
       type: object
-      required:
-        - reviewer
-        - review_status
       properties:
-        reviewer:
+        error:
           type: string
-        review_status:
+          description: Error message
+        code:
           type: string
-          enum: [approved, rejected, needs_revision]
-        review_notes:
-          type: string
-          nullable: true
-
-    IngestionRequest:
-      type: object
-      required:
-        - source_type
-        - source
-      properties:
-        source_type:
-          type: string
-          enum: [pdf, web, text, markdown]
-        source:
-          type: string
-        metadata:
+          description: Error code
+        details:
           type: object
-          default: {}
-        chunking_policy:
+          description: Additional error details
+        timestamp:
           type: string
-          enum: [none, paragraph, section]
-          default: paragraph
+          format: date-time
+          description: When the error occurred
 
-  responses:
-    BadRequest:
-      description: Bad request
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-              details:
-                type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
-    NotFound:
-      description: Resource not found
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-              resource_id:
-                type: string
-
-tags:
-  - name: Notes
-    description: Note management operations
-  - name: Agent
-    description: AI agent workflows with constitutional compliance
-  - name: Ingestion
-    description: External content ingestion
+security:
+  - bearerAuth: []

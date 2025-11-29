@@ -1,255 +1,148 @@
-# Data Model: AI Knowledge Base
+# Data Model: PDF Processing for Ingestion Curation
 
-**Feature**: AI Knowledge Base  
-**Date**: 2025-11-28  
-**Plan**: [plan.md](plan.md)  
-**Research**: [research.md](research.md)
+**Feature**: Add PDF processing capability to ingestion pipeline  
+**Date**: 2025-11-29  
+**Branch**: 002-ingestion-curation
 
-## Core Entities
+## Overview
 
-### Note
-Primary unit of knowledge with versioning and provenance tracking.
+Extend existing ingestion data models to support PDF document processing with dockling integration. Maintain backward compatibility while adding PDF-specific metadata and processing capabilities.
 
-**Fields**:
-- `id`: UUID (primary key)
-- `content`: Text (markdown supported)
-- `note_type`: Enum (fleeting, literature, permanent, insight, agent_generated)
-- `metadata`: JSONB (tags, custom fields)
-- `provenance`: JSONB (source information, creation method)
-- `version`: Integer (optimistic locking)
-- `created_at`: Timestamp
-- `updated_at`: Timestamp
-- `created_by`: String (user or agent identifier)
-- `is_ai_generated`: Boolean (constitutional requirement)
-- `ai_justification`: Text (rationale for AI-generated content)
+## Entity Definitions
 
-**Relationships**:
-- One-to-many: Note → Embedding (vector representations)
-- One-to-many: Note → Link (outgoing relationships)
-- One-to-many: Note → Link (incoming relationships)
-- One-to-many: Note → VersionHistory
-
-**Validation Rules**:
-- Content must be non-empty
-- Note type must be valid enum value
-- AI-generated content must include justification
-- Version must increment on updates
-
-### Embedding
-Vector representation of note content for semantic search.
+### 1. PDFMetadata (NEW)
+Extends the existing ingestion system with PDF-specific metadata.
 
 **Fields**:
-- `id`: UUID (primary key)
-- `note_id`: UUID (foreign key to Note)
-- `vector`: Vector (PGVector type, dimension configurable)
-- `model_version`: String (embedding model identifier)
-- `created_at`: Timestamp
+- `id` (UUID, Primary Key): Unique identifier
+- `ingestion_task_id` (UUID, Foreign Key): Reference to parent IngestionTask
+- `page_count` (Integer): Number of pages in PDF
+- `author` (String, Optional): Document author from metadata
+- `title` (String, Optional): Document title from metadata
+- `subject` (String, Optional): Document subject from metadata
+- `creation_date` (DateTime, Optional): PDF creation date
+- `modification_date` (DateTime, Optional): PDF modification date
+- `pdf_version` (String): PDF version (e.g., "1.4", "1.7")
+- `encryption_status` (String): Encryption status ("none", "password", "certificate")
+- `extraction_method` (String): Text extraction method used ("dockling_basic", "dockling_advanced")
+- `extraction_quality_score` (Float): Quality score of text extraction (0.0-1.0)
+- `created_at` (DateTime): Record creation timestamp
+- `updated_at` (DateTime): Record update timestamp
 
 **Relationships**:
-- Many-to-one: Embedding → Note
+- One-to-one with `IngestionTask` (extends existing model)
+
+### 2. IngestionTask (EXTENDED)
+Extend existing model to support PDF processing.
+
+**New Fields**:
+- `content_type` (String): Extended to include "pdf" value
+- `file_size` (Integer): File size in bytes (for PDF validation)
+- `processing_attempts` (Integer): Number of processing attempts
+- `last_processing_error` (String, Optional): Last error message if processing failed
 
 **Validation Rules**:
-- Vector dimension must match configured model
-- Model version must be tracked for compatibility
+- PDF files must be ≤ 100MB
+- Content type must be one of: ["web", "video", "text", "pdf"]
+- Processing attempts must be ≤ 3 before marking as failed
 
-### Link
-Explicit relationships between notes with typed connections.
+### 3. PDFProcessingResult (NEW)
+Store detailed PDF processing results.
 
 **Fields**:
-- `id`: UUID (primary key)
-- `source_note_id`: UUID (foreign key to Note)
-- `target_note_id`: UUID (foreign key to Note)
-- `relation_type`: Enum (cites, supports, derived_from, related, contradicts)
-- `created_at`: Timestamp
-- `created_by`: String (user or agent identifier)
+- `id` (UUID, Primary Key): Unique identifier
+- `ingestion_task_id` (UUID, Foreign Key): Reference to parent task
+- `extracted_text` (Text): Full text extracted from PDF
+- `text_quality_metrics` (JSON): Quality metrics (character count, word count, extraction confidence)
+- `section_breaks` (JSON): Document structure (page breaks, section headers)
+- `processing_time_ms` (Integer): Processing time in milliseconds
+- `dockling_version` (String): Version of dockling used
+- `created_at` (DateTime): Record creation timestamp
 
 **Relationships**:
-- Many-to-one: Link → Note (as source)
-- Many-to-one: Link → Note (as target)
+- One-to-one with `IngestionTask`
 
-**Validation Rules**:
-- Source and target notes must exist
-- Relation type must be valid enum value
-- No self-referential links allowed
+## State Transitions
 
-### AgentRun
-Audit trail for AI agent operations with constitutional compliance.
+### PDF Ingestion Workflow
 
-**Fields**:
-- `id`: UUID (primary key)
-- `agent_name`: String (agent identifier)
-- `agent_version`: String (constitutional versioning requirement)
-- `input_parameters`: JSONB (agent input data)
-- `output_note_ids`: Array[UUID] (created or modified notes)
-- `status`: Enum (success, failed, pending_review)
-- `started_at`: Timestamp
-- `completed_at`: Timestamp
-- `error_details`: Text (if failed)
-- `human_reviewer`: String (if reviewed)
-- `reviewed_at`: Timestamp
-- `review_status`: Enum (approved, rejected, needs_revision)
-
-**Relationships**:
-- One-to-many: AgentRun → Note (through output_note_ids)
-
-**Validation Rules**:
-- Agent version must be specified
-- Status transitions must follow constitutional workflow
-- Human review required for final status of agent outputs
-
-### VersionHistory
-Complete change tracking for constitutional auditability.
-
-**Fields**:
-- `id`: UUID (primary key)
-- `note_id`: UUID (foreign key to Note)
-- `version`: Integer
-- `content`: Text
-- `metadata`: JSONB
-- `changes`: JSONB (diff information)
-- `created_at`: Timestamp
-- `created_by`: String (user or agent identifier)
-- `change_reason`: Text (optional explanation)
-
-**Relationships**:
-- Many-to-one: VersionHistory → Note
-
-**Validation Rules**:
-- Version must be sequential
-- Changes must be recorded for audit purposes
-
-## Database Schema
-
-### Tables
-```sql
--- Notes table with constitutional requirements
-CREATE TABLE notes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    content TEXT NOT NULL,
-    note_type VARCHAR(50) NOT NULL CHECK (note_type IN ('fleeting', 'literature', 'permanent', 'insight', 'agent_generated')),
-    metadata JSONB DEFAULT '{}',
-    provenance JSONB DEFAULT '{}',
-    version INTEGER DEFAULT 1,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
-    created_by VARCHAR(255) NOT NULL,
-    is_ai_generated BOOLEAN DEFAULT FALSE,
-    ai_justification TEXT,
-    CHECK (NOT (is_ai_generated AND ai_justification IS NULL))
-);
-
--- Embeddings for semantic search
-CREATE TABLE embeddings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-    vector VECTOR(1536), -- Configurable dimension
-    model_version VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Links between notes
-CREATE TABLE links (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-    target_note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-    relation_type VARCHAR(50) NOT NULL CHECK (relation_type IN ('cites', 'supports', 'derived_from', 'related', 'contradicts')),
-    created_at TIMESTAMP DEFAULT NOW(),
-    created_by VARCHAR(255) NOT NULL,
-    CHECK (source_note_id != target_note_id)
-);
-
--- Agent run audit trails
-CREATE TABLE agent_runs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    agent_name VARCHAR(255) NOT NULL,
-    agent_version VARCHAR(100) NOT NULL,
-    input_parameters JSONB DEFAULT '{}',
-    output_note_ids UUID[] DEFAULT '{}',
-    status VARCHAR(50) NOT NULL CHECK (status IN ('success', 'failed', 'pending_review')),
-    started_at TIMESTAMP DEFAULT NOW(),
-    completed_at TIMESTAMP,
-    error_details TEXT,
-    human_reviewer VARCHAR(255),
-    reviewed_at TIMESTAMP,
-    review_status VARCHAR(50) CHECK (review_status IN ('approved', 'rejected', 'needs_revision'))
-);
-
--- Version history for constitutional auditability
-CREATE TABLE version_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    note_id UUID NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-    version INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    metadata JSONB DEFAULT '{}',
-    changes JSONB DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT NOW(),
-    created_by VARCHAR(255) NOT NULL,
-    change_reason TEXT
-);
-```
-
-### Indexes for Performance
-```sql
--- Performance indexes for constitutional requirements
-CREATE INDEX idx_notes_type ON notes(note_type);
-CREATE INDEX idx_notes_created_at ON notes(created_at);
-CREATE INDEX idx_notes_ai_generated ON notes(is_ai_generated);
-CREATE INDEX idx_embeddings_note_id ON embeddings(note_id);
-CREATE INDEX idx_links_source ON links(source_note_id);
-CREATE INDEX idx_links_target ON links(target_note_id);
-CREATE INDEX idx_agent_runs_status ON agent_runs(status);
-CREATE INDEX idx_agent_runs_agent ON agent_runs(agent_name, agent_version);
-CREATE INDEX idx_version_history_note_version ON version_history(note_id, version);
-```
-
-## Pydantic Models
-
-### Note Model
-```python
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from enum import Enum
-
-class NoteType(str, Enum):
-    FLEETING = "fleeting"
-    LITERATURE = "literature" 
-    PERMANENT = "permanent"
-    INSIGHT = "insight"
-    AGENT_GENERATED = "agent_generated"
-
-class NoteBase(BaseModel):
-    content: str = Field(..., min_length=1)
-    note_type: NoteType
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    provenance: Dict[str, Any] = Field(default_factory=dict)
-
-class NoteCreate(NoteBase):
-    created_by: str
-    is_ai_generated: bool = False
-    ai_justification: Optional[str] = None
-
-class Note(NoteBase):
-    id: str
-    version: int
-    created_at: str
-    updated_at: str
-    created_by: str
-    is_ai_generated: bool
-    ai_justification: Optional[str]
+```mermaid
+graph TD
+    A[PDF Upload] --> B[File Validation]
+    B --> C[Metadata Extraction]
+    C --> D[Text Extraction]
+    D --> E[Quality Assessment]
+    E --> F[Summarization]
+    F --> G[Classification]
+    G --> H[Review Queue]
+    H --> I[Human Approval]
+    I --> J[Knowledge Integration]
     
-    class Config:
-        from_attributes = True
+    B --> K[Validation Failed]
+    D --> L[Extraction Failed]
+    E --> M[Low Quality]
+    
+    K --> N[Error Reporting]
+    L --> N
+    M --> N
 ```
 
-## Constitutional Compliance
+### Processing States
 
-This data model fully complies with BrainForge Constitution requirements:
+1. **VALIDATING**: Initial file validation and security checks
+2. **EXTRACTING_METADATA**: Extracting PDF metadata using dockling
+3. **EXTRACTING_TEXT**: Performing text extraction
+4. **ASSESSING_QUALITY**: Evaluating extraction quality
+5. **SUMMARIZING**: Generating content summary
+6. **CLASSIFYING**: Applying tags and classifications
+7. **AWAITING_REVIEW**: Waiting for human approval
+8. **INTEGRATED**: Successfully integrated into knowledge base
+9. **FAILED**: Processing failed with error details
 
-1. **Structured Data Foundation**: Clear entity definitions with explicit boundaries
-2. **Versioning & Auditability**: Complete change tracking through VersionHistory
-3. **AI Agent Integration**: AgentRun table with audit trails and versioning
-4. **Human-in-the-Loop**: Review status and human reviewer fields
-5. **Data Governance**: Provenance tracking and metadata validation
-6. **Error Handling**: Status tracking and error details for recovery
+## Validation Rules
 
-The model supports all functional requirements from the specification while maintaining constitutional principles.
+### PDF-Specific Validations
+
+1. **File Size**: ≤ 100MB
+2. **Content Type**: Must be valid PDF (MIME type validation)
+3. **Encryption**: Password-protected PDFs require user intervention
+4. **Structure**: Must contain extractable text content
+5. **Metadata**: Required fields must be present for processing
+
+### Business Rules
+
+1. **Retry Logic**: Maximum 3 processing attempts per PDF
+2. **Quality Threshold**: Extraction quality score ≥ 0.7 for automatic processing
+3. **Review Required**: Low-quality extractions (score < 0.7) require manual review
+4. **Duplicate Detection**: Check for duplicate PDF content based on text similarity
+5. **Version Control**: Maintain processing version for audit purposes
+
+## Integration Points
+
+### With Existing Models
+
+- **Note**: PDF content becomes literature notes after approval
+- **Embedding**: PDF text gets embedded for semantic search
+- **Link**: Connections to existing knowledge based on content similarity
+- **VersionHistory**: Track PDF processing and approval history
+
+### External Dependencies
+
+- **dockling**: PDF text extraction and metadata collection
+- **AI Services**: Summarization and classification
+- **Storage**: File storage for original PDFs (temporary)
+- **Audit System**: Log all PDF processing activities
+
+## Migration Strategy
+
+1. **Backward Compatibility**: Existing ingestion workflows unchanged
+2. **Gradual Rollout**: PDF processing as optional enhancement
+3. **Data Migration**: No migration required for existing data
+4. **Testing**: Comprehensive testing before production deployment
+
+## Performance Considerations
+
+- **Indexing**: Add indexes on `ingestion_task_id` and `content_type`
+- **Partitioning**: Consider partitioning by date for large volumes
+- **Caching**: Cache extraction results for repeated processing
+- **Batch Processing**: Support batch PDF ingestion for efficiency

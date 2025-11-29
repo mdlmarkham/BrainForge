@@ -1,40 +1,40 @@
-# Implementation Plan: Semantic Search Pipeline
+# Implementation Plan: PDF Processing for Ingestion Curation
 
-**Branch**: `001-semantic-search` | **Date**: 2025-11-28 | **Spec**: [../001-semantic-search/spec.md](../001-semantic-search/spec.md)
-**Input**: Feature specification from `/specs/001-semantic-search/spec.md`
+**Branch**: `002-ingestion-curation` | **Date**: 2025-11-29 | **Spec**: `/specs/002-ingestion-curation/spec.md`
+**Input**: Feature specification from `/specs/002-ingestion-curation/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Implement semantic search pipeline using embeddings and vector search to enable meaning-based retrieval over notes, with optional hybrid search combining semantic similarity with metadata/keyword filters.
+Add PDF processing capability to the ingestion curation pipeline using dockling for text extraction, enabling automated ingestion of PDF documents with summarization, classification, and integration into the knowledge graph.
 
 ## Technical Context
 
 **Language/Version**: Python 3.11+ (constitution requirement)
-**Primary Dependencies**: FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy
-**Storage**: PostgreSQL with PGVector extension for vector storage and semantic indexing
-**Testing**: pytest with contract testing for search interfaces
-**Target Platform**: Linux server with containerized deployment
-**Project Type**: web application (API backend)
-**Performance Goals**: Semantic/hybrid search <500ms for 10k notes, CRUD operations <1s for 10k notes
-**Constraints**: Single embedding model consistency, embedding recomputation on content changes, text-only content initially
-**Scale/Scope**: 10k notes initially, scalable to 100k+ notes with indexing strategies
+**Primary Dependencies**: FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, dockling (PDF processing)
+**Storage**: PostgreSQL with PGVector extension for semantic indexing
+**Testing**: pytest with contract testing for PDF processing interfaces
+**Target Platform**: Linux server (containerized deployment)
+**Project Type**: single project (API service)
+**Performance Goals**: Process PDF documents within 2 minutes for typical academic papers (20-30 pages)
+**Constraints**: Maintain backward compatibility with existing ingestion pipeline, support PDFs up to 100MB
+**Scale/Scope**: Handle dozens of PDFs per month for personal knowledge management use cases
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Structured Data Foundation**: ✅ Data models already defined (Note, Embedding models) before search implementation
-**AI Agent Integration**: ✅ Search API provides well-defined interface for agent integration with audit trails
-**Versioning & Auditability**: ✅ Version history maintained for notes, embedding metadata tracked with timestamps
-**Test-First Development**: ✅ Contract tests required for search interfaces before implementation
-**Progressive Enhancement**: ✅ Core search functionality works without AI dependencies (metadata filtering available)
-**Roles & Permissions**: ✅ Search accessible to all roles, results filtered by permissions where applicable
-**Data Governance**: ✅ External content validation handled by ingestion pipeline, search operates on validated data
-**Error Handling**: ✅ Search operations include retry logic, fallback mechanisms, and comprehensive logging
-**AI Versioning**: ✅ Embedding model version tracked in metadata, search results include model provenance
-**Human-in-the-Loop**: ✅ Search results provide transparency, human review available for AI-enhanced features
+**Structured Data Foundation**: ✅ PDF processing will extend existing ingestion data models with PDF-specific metadata
+**AI Agent Integration**: ✅ PDF processing will use dockling with clear input/output contracts and audit trails
+**Versioning & Auditability**: ✅ PDF ingestion will maintain complete version history and rollback capabilities
+**Test-First Development**: ✅ PDF processing will have comprehensive test coverage before integration
+**Progressive Enhancement**: ✅ PDF processing will be optional enhancement to existing ingestion pipeline
+**Roles & Permissions**: ✅ PDF ingestion will follow existing user/agent roles and approval workflows
+**Data Governance**: ✅ PDF processing will include source validation and license compliance checks
+**Error Handling**: ✅ PDF processing will implement retry logic and graceful failure handling
+**AI Versioning**: ✅ dockling integration will use versioned interfaces with behavior verification
+**Human-in-the-Loop**: ✅ PDF processing results will require human review before final integration
 
 *All constitutional gates passed - feature design is compliant*
 
@@ -43,87 +43,83 @@ Implement semantic search pipeline using embeddings and vector search to enable 
 ### Documentation (this feature)
 
 ```text
-specs/001-semantic-search/
-├── spec.md              # Feature specification
-├── plan.md              # This implementation plan
-├── research.md          # Phase 0 research findings
-├── data-model.md        # Phase 1 data model design
-├── quickstart.md        # Phase 1 quickstart guide
-├── contracts/           # Phase 1 API contracts
-└── checklists/          # Compliance and requirements checklists
+specs/[###-feature]/
+├── plan.md              # This file (/speckit.plan command output)
+├── research.md          # Phase 0 output (/speckit.plan command)
+├── data-model.md        # Phase 1 output (/speckit.plan command)
+├── quickstart.md        # Phase 1 output (/speckit.plan command)
+├── contracts/           # Phase 1 output (/speckit.plan command)
+└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
 
 ```text
 src/
-├── models/
-│   ├── embedding.py     # Embedding model with vector storage
-│   ├── note.py          # Note model with search metadata
-│   └── base.py          # Base models with constitutional compliance
+├── models/                          # Existing data models
+│   ├── ingestion.py                 # NEW: PDF ingestion models
+│   └── pdf_metadata.py              # NEW: PDF-specific metadata
 ├── services/
-│   ├── search_service.py # Hybrid search implementation
-│   ├── embedding_service.py # Vector generation and management
-│   └── database.py      # Database service layer
-├── api/
-│   └── routes/
-│       └── search.py    # Search API endpoints
+│   ├── pdf_processor.py             # NEW: PDF processing service with dockling
+│   └── ingestion.py                 # Extend existing ingestion service
+├── api/routes/
+│   └── ingestion.py                 # Extend existing ingestion routes
 └── cli/
-    └── search.py        # CLI search interface
+    └── pdf_ingest.py                # NEW: CLI for PDF ingestion
 
 tests/
 ├── contract/
-│   └── test_search.py   # Search API contract tests
+│   └── test_pdf_processing.py       # NEW: PDF processing contract tests
 ├── integration/
-│   └── test_search.py   # Search workflow integration tests
-└── performance/
-    └── test_search_performance.py # Search performance benchmarks
+│   └── test_pdf_ingestion.py        # NEW: PDF ingestion integration tests
+└── unit/
+    └── test_pdf_processor.py        # NEW: PDF processor unit tests
 ```
 
-**Structure Decision**: Single project structure with existing foundation. Semantic search builds upon established models and services, adding search-specific components while maintaining constitutional compliance.
+**Structure Decision**: Single project structure selected as this extends existing ingestion pipeline. New PDF-specific modules will be added to existing directories while maintaining separation of concerns.
 
-## Implementation Status
+## Phase 0: Research Complete
 
-### Phase 0: Research - COMPLETED ✅
-- Research document created: [`specs/001-semantic-search/research.md`](../001-semantic-search/research.md)
-- Technical decisions documented for PGVector, embedding models, hybrid search, and API design
-- **Context7 Research Completed**: All open items researched with specific implementation patterns
-  - PGVector HNSW indexing and hybrid search SQL patterns
-  - OpenAI embedding generation with error handling
-  - FastAPI endpoint implementation with validation
-- Constitutional compliance verified for all research findings
+**Status**: All research tasks completed and documented in `research.md`
 
-### Phase 1: Design & Contracts - COMPLETED ✅
-- Data model documented: [`specs/001-semantic-search/data-model.md`](../001-semantic-search/data-model.md)
-- API contracts created: [`specs/001-semantic-search/contracts/openapi.yaml`](../001-semantic-search/contracts/openapi.yaml)
-- Quickstart guide created: [`specs/001-semantic-search/quickstart.md`](../001-semantic-search/quickstart.md)
-- Agent context updated: Roo agent context file updated with semantic search technology
+**Key Decisions**:
+- Use dockling for PDF text extraction and metadata collection
+- Extend existing ingestion architecture with PDF-specific services
+- Maintain backward compatibility with current ingestion pipeline
+- Implement comprehensive error handling and retry logic
 
-### Phase 2: Implementation - READY FOR DEVELOPMENT
-- Implementation ready to begin based on completed design artifacts
-- Constitutional compliance verified throughout design phase
-- Performance benchmarks established for validation
-- **All research gaps addressed** using Context7 documentation
-- **Implementation tasks generated**: [`specs/001-semantic-search/tasks.md`](../001-semantic-search/tasks.md)
+## Phase 1: Design Complete
 
-## Generated Artifacts
+**Status**: Design artifacts generated and ready for implementation
 
-### Feature Branch: `001-semantic-search`
-- **Research**: [`specs/001-semantic-search/research.md`](../001-semantic-search/research.md)
-- **Data Model**: [`specs/001-semantic-search/data-model.md`](../001-semantic-search/data-model.md)
-- **API Contracts**: [`specs/001-semantic-search/contracts/openapi.yaml`](../001-semantic-search/contracts/openapi.yaml)
-- **Quickstart Guide**: [`specs/001-semantic-search/quickstart.md`](../001-semantic-search/quickstart.md)
-- **Implementation Tasks**: [`specs/001-semantic-search/tasks.md`](../001-semantic-search/tasks.md)
+**Generated Artifacts**:
+- `data-model.md`: Extended data models for PDF processing
+- `contracts/openapi.yaml`: API specifications for PDF ingestion endpoints
+- `quickstart.md`: Implementation guide with code examples
 
-### Master Integration
-- **Implementation Plan**: [`specs/master/plan.md`](plan.md) (this file)
-- **Agent Context**: [`.roo/rules/specify-rules.md`](../../.roo/rules/specify-rules.md) (updated)
+**Constitution Check Re-evaluation**:
+
+**Structured Data Foundation**: ✅ PDFMetadata model extends existing ingestion data structure
+**AI Agent Integration**: ✅ dockling integration with clear contracts and audit trails
+**Versioning & Auditability**: ✅ Complete version history for PDF processing activities
+**Test-First Development**: ✅ Comprehensive test plan included in quickstart
+**Progressive Enhancement**: ✅ PDF processing optional enhancement to existing pipeline
+**Roles & Permissions**: ✅ Follows existing user/agent role definitions
+**Data Governance**: ✅ PDF validation and security checks implemented
+**Error Handling**: ✅ Retry logic and graceful failure handling designed
+**AI Versioning**: ✅ dockling version tracking included
+**Human-in-the-Loop**: ✅ Review workflow maintained for PDF content
+
+*All constitutional requirements maintained - design approved*
 
 ## Next Steps
 
-1. **Begin Implementation**: Start with core search service and API endpoints following the task breakdown
-2. **Contract Testing**: Write and run search API contract tests as specified in tasks
-3. **Performance Validation**: Establish baseline performance metrics according to success criteria
-4. **Integration Testing**: Validate search functionality with existing note system
+Proceed to implementation phase using the generated artifacts:
+1. Implement data models from `data-model.md`
+2. Build services following `quickstart.md` examples
+3. Implement API endpoints from `contracts/openapi.yaml`
+4. Run comprehensive testing before deployment
 
-The semantic search pipeline implementation plan and tasks are complete and ready for development.
+**Branch**: `002-ingestion-curation`
+**IMPL_PLAN Path**: `specs/master/plan.md`
+**Generated Artifacts**: `research.md`, `data-model.md`, `contracts/openapi.yaml`, `quickstart.md`

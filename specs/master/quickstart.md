@@ -1,262 +1,355 @@
-# Quickstart Guide: BrainForge AI Knowledge Base
+# Quickstart: PDF Processing for Ingestion Curation
 
-**Feature**: AI Knowledge Base  
-**Date**: 2025-11-28  
-**Plan**: [plan.md](plan.md)  
-**Data Model**: [data-model.md](data-model.md)  
-**API**: [contracts/openapi.yaml](contracts/openapi.yaml)
+**Feature**: Add PDF processing capability using dockling  
+**Date**: 2025-11-29  
+**Branch**: 002-ingestion-curation
+
+## Overview
+
+This guide provides step-by-step instructions for implementing PDF processing capabilities in the BrainForge ingestion pipeline using dockling for text extraction.
 
 ## Prerequisites
 
-- Python 3.11+
-- PostgreSQL 14+ with PGVector extension
+- Python 3.11+ environment
+- Existing BrainForge installation
+- PostgreSQL database with PGVector extension
 - Docker (for containerized deployment)
 
-## Setup Instructions
+## Installation
 
-### 1. Database Setup
-```bash
-# Install PostgreSQL with PGVector
-# Create database and enable extension
-createdb brainforge
-psql brainforge -c "CREATE EXTENSION vector;"
+### 1. Add Dependencies
+
+Add the following dependencies to `requirements.txt`:
+
+```txt
+dockling>=1.2.0
+python-multipart>=0.0.6
 ```
 
-### 2. Project Setup
+### 2. Install Dependencies
+
 ```bash
-# Clone and setup project
-git clone <repository> brainforge
-cd brainforge
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Configuration
-Create `config/database.env`:
-```env
-DATABASE_URL=postgresql://user:password@localhost/brainforge
-EMBEDDING_MODEL=text-embedding-3-small
-EMBEDDING_DIMENSION=1536
-```
+## Implementation Steps
 
-### 4. Initialize Database
-```bash
-# Run migrations
-python src/cli/migrate.py
-```
+### Step 1: Create PDF Data Models
 
-## Basic Usage
+Create `src/models/pdf_metadata.py`:
 
-### Creating Notes
 ```python
-from src.models.note import NoteCreate, NoteType
-from src.services.note_service import NoteService
+from sqlalchemy import Column, String, Integer, DateTime, Float, JSON, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+from .base import Base
 
-note_service = NoteService()
-
-# Create a human-authored note
-note = note_service.create_note(NoteCreate(
-    content="This is a research note about AI knowledge management",
-    note_type=NoteType.LITERATURE,
-    created_by="user@example.com",
-    metadata={"tags": ["research", "ai"]}
-))
-
-print(f"Created note: {note.id}")
+class PDFMetadata(Base):
+    __tablename__ = "pdf_metadata"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    ingestion_task_id = Column(UUID(as_uuid=True), ForeignKey("ingestion_tasks.id"), nullable=False)
+    page_count = Column(Integer, nullable=False)
+    author = Column(String, nullable=True)
+    title = Column(String, nullable=True)
+    subject = Column(String, nullable=True)
+    creation_date = Column(DateTime, nullable=True)
+    modification_date = Column(DateTime, nullable=True)
+    pdf_version = Column(String, nullable=False)
+    encryption_status = Column(String, nullable=False)
+    extraction_method = Column(String, nullable=False)
+    extraction_quality_score = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 ```
 
-### Semantic Search
+### Step 2: Create PDF Processing Service
+
+Create `src/services/pdf_processor.py`:
+
 ```python
-from src.services.search_service import SearchService
+import dockling
+from typing import Optional, Dict, Any
+from .base import BaseService
 
-search_service = SearchService()
-
-# Hybrid search (metadata + semantic)
-results = search_service.hybrid_search(
-    semantic_query="AI knowledge management systems",
-    filters={"note_type": "literature"},
-    limit=10
-)
-
-for note in results.notes:
-    print(f"{note.id}: {note.content[:100]}...")
+class PDFProcessor(BaseService):
+    def __init__(self):
+        self.parser = dockling.PDFParser()
+    
+    async def extract_metadata(self, pdf_path: str) -> Dict[str, Any]:
+        """Extract metadata from PDF using dockling"""
+        document = self.parser.parse(pdf_path)
+        return {
+            "page_count": document.page_count,
+            "author": document.author,
+            "title": document.title,
+            "subject": document.subject,
+            "creation_date": document.creation_date,
+            "modification_date": document.modification_date,
+            "pdf_version": document.pdf_version,
+            "encryption_status": document.encryption_status
+        }
+    
+    async def extract_text(self, pdf_path: str, method: str = "advanced") -> Dict[str, Any]:
+        """Extract text from PDF with quality assessment"""
+        document = self.parser.parse(pdf_path)
+        
+        if method == "basic":
+            text = document.extract_text_basic()
+        else:
+            text = document.extract_text_advanced()
+        
+        quality_score = self._assess_text_quality(text)
+        
+        return {
+            "extracted_text": text,
+            "quality_score": quality_score,
+            "method": method,
+            "character_count": len(text),
+            "word_count": len(text.split())
+        }
+    
+    def _assess_text_quality(self, text: str) -> float:
+        """Assess quality of extracted text (0.0-1.0)"""
+        if not text or len(text.strip()) < 100:
+            return 0.0
+        
+        # Basic quality assessment based on text characteristics
+        lines = text.split('\n')
+        avg_line_length = sum(len(line.strip()) for line in lines) / len(lines)
+        
+        # Higher score for longer average line length and fewer empty lines
+        empty_lines = sum(1 for line in lines if not line.strip())
+        quality = min(1.0, avg_line_length / 50) * (1 - empty_lines / len(lines))
+        
+        return max(0.0, min(1.0, quality))
 ```
 
-### AI Agent Workflow
+### Step 3: Extend Ingestion Service
+
+Update `src/services/ingestion.py` to include PDF processing:
+
 ```python
-from src.services.agent_service import AgentService
+# Add PDF processing imports
+from .pdf_processor import PDFProcessor
 
-agent_service = AgentService()
+class IngestionService(BaseService):
+    def __init__(self):
+        super().__init__()
+        self.pdf_processor = PDFProcessor()
+    
+    async def process_pdf(self, file_path: str, task_id: UUID) -> Dict[str, Any]:
+        """Process PDF file through full ingestion pipeline"""
+        try:
+            # Step 1: Extract metadata
+            metadata = await self.pdf_processor.extract_metadata(file_path)
+            
+            # Step 2: Extract text with quality assessment
+            text_result = await self.pdf_processor.extract_text(file_path)
+            
+            # Step 3: Generate summary and classifications
+            summary = await self._generate_summary(text_result["extracted_text"])
+            classifications = await self._classify_content(text_result["extracted_text"])
+            
+            return {
+                "metadata": metadata,
+                "text_result": text_result,
+                "summary": summary,
+                "classifications": classifications,
+                "success": True
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
+```
 
-# Run research agent
-run = agent_service.execute_agent(
-    agent_name="research_agent",
-    agent_version="1.0.0",
-    input_parameters={
-        "topic": "AI knowledge management",
-        "depth": "comprehensive"
+### Step 4: Add API Routes
+
+Update `src/api/routes/ingestion.py` to include PDF endpoints:
+
+```python
+from fastapi import UploadFile, File, Form
+from typing import List, Optional
+
+@router.post("/pdf")
+async def ingest_pdf(
+    file: UploadFile = File(...),
+    source_url: Optional[str] = Form(None),
+    tags: Optional[List[str]] = Form([]),
+    priority: str = Form("normal")
+):
+    """Submit PDF for ingestion processing"""
+    # Validate file type
+    if not file.content_type == "application/pdf":
+        raise HTTPException(400, "File must be PDF")
+    
+    # Validate file size (100MB limit)
+    if file.size > 100 * 1024 * 1024:
+        raise HTTPException(413, "PDF file too large (>100MB)")
+    
+    # Create ingestion task
+    task = await ingestion_service.create_pdf_task(
+        file.filename, file.size, source_url, tags, priority
+    )
+    
+    # Process asynchronously
+    asyncio.create_task(ingestion_service.process_pdf_task(task.id))
+    
+    return {
+        "task_id": task.id,
+        "status": "accepted",
+        "estimated_completion": datetime.now() + timedelta(minutes=2)
     }
-)
+```
 
-# Check status and review if needed
-if run.status == "pending_review":
-    agent_service.submit_review(
-        run_id=run.id,
-        reviewer="user@example.com",
-        review_status="approved"
+### Step 5: Create Database Migration
+
+Create migration for PDF metadata table:
+
+```python
+# alembic/versions/002_add_pdf_processing.py
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade():
+    op.create_table(
+        'pdf_metadata',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
+        sa.Column('page_count', sa.Integer(), nullable=False),
+        sa.Column('author', sa.String(), nullable=True),
+        sa.Column('title', sa.String(), nullable=True),
+        sa.Column('subject', sa.String(), nullable=True),
+        sa.Column('creation_date', sa.DateTime(), nullable=True),
+        sa.Column('modification_date', sa.DateTime(), nullable=True),
+        sa.Column('pdf_version', sa.String(), nullable=False),
+        sa.Column('encryption_status', sa.String(), nullable=False),
+        sa.Column('extraction_method', sa.String(), nullable=False),
+        sa.Column('extraction_quality_score', sa.Float(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()')),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()')),
+        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id']),
+        sa.PrimaryKeyConstraint('id')
     )
-```
+    
+    # Add PDF content type to ingestion_tasks
+    op.execute("ALTER TYPE content_type ADD VALUE 'pdf'")
 
-## API Usage
-
-### REST API
-Start the server:
-```bash
-uvicorn src.api.main:app --reload --port 8000
-```
-
-Example API calls:
-```bash
-# Create note
-curl -X POST http://localhost:8000/notes \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Test note content",
-    "note_type": "fleeting",
-    "created_by": "test@example.com"
-  }'
-
-# Search notes
-curl "http://localhost:8000/notes?semantic_query=knowledge%20management&limit=5"
-```
-
-### MCP Server Integration
-The system exposes MCP servers for AI tool integration:
-
-```python
-# Connect to BrainForge MCP server
-from fastmcp import FastMCP
-
-mcp = FastMCP("brainforge")
-result = mcp.search_notes(query="AI research", limit=10)
-```
-
-## Constitutional Compliance Features
-
-### Audit Trails
-All operations are logged with complete audit trails:
-```python
-# View agent run history
-runs = agent_service.get_agent_runs(agent_name="research_agent")
-for run in runs:
-    print(f"Run {run.id}: {run.status} by {run.agent_version}")
-```
-
-### Version History
-```python
-# View note version history
-versions = note_service.get_version_history(note_id=note.id)
-for version in versions:
-    print(f"Version {version.version}: {version.created_by}")
-```
-
-### Human Review Workflow
-```python
-# Get pending reviews
-pending = agent_service.get_pending_reviews()
-for run in pending:
-    # Human reviews required for constitutional compliance
-    agent_service.submit_review(
-        run_id=run.id,
-        reviewer="human@example.com",
-        review_status="approved",
-        review_notes="Content looks accurate and relevant"
-    )
+def downgrade():
+    op.drop_table('pdf_metadata')
 ```
 
 ## Testing
 
-### Run Tests
-```bash
-# Unit tests
-pytest tests/unit/
+### Unit Tests
 
-# Contract tests for AI interfaces
-pytest tests/contract/
+Create `tests/unit/test_pdf_processor.py`:
 
-# Integration tests
-pytest tests/integration/
+```python
+import pytest
+from src.services.pdf_processor import PDFProcessor
 
-# Performance benchmarks
-pytest tests/performance/
+class TestPDFProcessor:
+    @pytest.fixture
+    def processor(self):
+        return PDFProcessor()
+    
+    def test_text_quality_assessment(self, processor):
+        # Test quality assessment with various text samples
+        assert processor._assess_text_quality("") == 0.0
+        assert processor._assess_text_quality("Short text") == 0.0
+        assert processor._assess_text_quality("Valid text with reasonable length") > 0.5
 ```
 
-### Contract Testing
+### Integration Tests
+
+Create `tests/integration/test_pdf_ingestion.py`:
+
 ```python
-# Example contract test for agent interface
-def test_agent_contract():
-    # Verify agent input/output contracts
-    result = agent_service.execute_agent(
-        agent_name="test_agent",
-        agent_version="1.0.0",
-        input_parameters={"test": "data"}
-    )
-    assert result.agent_version == "1.0.0"
-    assert "output_note_ids" in result.dict()
+import pytest
+from fastapi.testclient import TestClient
+
+class TestPDFIngestion:
+    def test_pdf_upload(self, client: TestClient):
+        # Test PDF upload and processing
+        with open("test.pdf", "rb") as f:
+            response = client.post("/api/ingestion/pdf", files={"file": f})
+            assert response.status_code == 202
+            assert "task_id" in response.json()
 ```
 
 ## Deployment
 
-### Docker Deployment
-```bash
-# Build and run
-docker-compose up -d
+### Docker Configuration
 
-# Check logs
-docker-compose logs -f
+Update `Dockerfile` to include PDF processing dependencies:
+
+```dockerfile
+# Add PDF processing tools
+RUN apt-get update && apt-get install -y \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
 ```
 
-### Production Configuration
-Create `config/production.env`:
-```env
-DATABASE_URL=postgresql://prod_user:password@db.prod.com/brainforge
-EMBEDDING_MODEL=text-embedding-3-large
-LOG_LEVEL=INFO
+### Environment Variables
+
+Add PDF processing configuration to environment:
+
+```bash
+# config/database.env
+PDF_PROCESSING_MAX_SIZE=100MB
+PDF_PROCESSING_TIMEOUT=120
+DOCKLING_CACHE_SIZE=1000
+```
+
+## Usage Examples
+
+### Basic PDF Ingestion
+
+```python
+import requests
+
+# Upload PDF for processing
+files = {'file': open('research_paper.pdf', 'rb')}
+data = {'tags': ['research', 'ai'], 'priority': 'high'}
+response = requests.post('http://localhost:8000/api/ingestion/pdf', files=files, data=data)
+task_id = response.json()['task_id']
+
+# Check processing status
+status = requests.get(f'http://localhost:8000/api/ingestion/pdf/{task_id}').json()
+```
+
+### Batch Processing
+
+```python
+# Upload multiple PDFs
+files = [('files', open('doc1.pdf', 'rb')), ('files', open('doc2.pdf', 'rb'))]
+data = {'batch_name': 'research_papers'}
+response = requests.post('http://localhost:8000/api/ingestion/pdf/batch', files=files, data=data)
 ```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Database Connection**:
-```bash
-# Test connection
-python src/cli/test_connection.py
-```
+1. **PDF parsing fails**: Check if PDF is corrupted or password-protected
+2. **Text extraction quality low**: Try advanced extraction method or manual review
+3. **Processing timeout**: Reduce PDF size or increase timeout configuration
+4. **Memory issues**: Monitor container memory usage and adjust limits
 
-**Vector Search Performance**:
-```bash
-# Reindex embeddings
-python src/cli/reindex_embeddings.py
-```
+### Performance Optimization
 
-**Agent Workflow Errors**:
-```bash
-# Check agent logs
-docker-compose logs agents
-```
-
-### Monitoring
-- API health: `http://localhost:8000/health`
-- Agent status: `http://localhost:8000/agent/status`
-- Database metrics: PostgreSQL monitoring tools
+- Use batch processing for multiple PDFs
+- Implement caching for repeated PDF processing
+- Monitor extraction quality scores for optimization
+- Consider parallel processing for large PDF collections
 
 ## Next Steps
 
-- Review [data-model.md](data-model.md) for detailed entity definitions
-- Explore [API documentation](contracts/openapi.yaml) for complete endpoint details
-- Check [constitutional compliance](../1-ai-knowledge-base/checklists/constitution-compliance.md) for governance requirements
-- Implement custom agents using the MCP server framework
-
-This quickstart provides the foundation for building constitutional-compliant AI knowledge management systems.
+After implementation, proceed with:
+1. Comprehensive testing with various PDF types
+2. Performance benchmarking and optimization
+3. Integration with existing review workflows
+4. User acceptance testing and feedback collection
