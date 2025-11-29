@@ -1,0 +1,422 @@
+openapi: 3.1.0
+info:
+  title: BrainForge Semantic Search API
+  description: API for semantic and hybrid search operations in the BrainForge AI Knowledge Base
+  version: 1.0.0
+  contact:
+    name: BrainForge Development Team
+    email: dev@brainforge.example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.brainforge.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: Search
+    description: Semantic and hybrid search operations
+
+paths:
+  /search:
+    post:
+      tags:
+        - Search
+      summary: Perform hybrid search
+      description: |
+        Execute a hybrid search combining semantic similarity with metadata filtering.
+        Supports weighted combination of semantic and metadata relevance scores.
+      operationId: searchHybrid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+            examples:
+              basicSearch:
+                summary: Basic semantic search
+                value:
+                  query: "machine learning algorithms"
+                  limit: 10
+              filteredSearch:
+                summary: Search with metadata filters
+                value:
+                  query: "neural networks"
+                  filters:
+                    tags: ["ai", "research"]
+                    note_type: "literature"
+                    date_range:
+                      start: "2024-01-01"
+                      end: "2024-12-31"
+                  semantic_weight: 0.7
+                  metadata_weight: 0.3
+                  limit: 20
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid search parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/semantic:
+    get:
+      tags:
+        - Search
+      summary: Semantic-only search
+      description: Perform search using only semantic similarity (vector search)
+      operationId: searchSemantic
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+          description: Search query text
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Maximum number of results
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+      responses:
+        '200':
+          description: Semantic search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /search/metadata:
+    get:
+      tags:
+        - Search
+      summary: Metadata-only search
+      description: Perform search using only metadata filtering (no semantic similarity)
+      operationId: searchMetadata
+      parameters:
+        - in: query
+          name: tags
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+          description: Filter by tags
+        - in: query
+          name: note_type
+          schema:
+            type: string
+            enum: [fleeting, literature, permanent, insight, agent-generated]
+          description: Filter by note type
+        - in: query
+          name: created_by
+          schema:
+            type: string
+          description: Filter by creator
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Maximum number of results
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Pagination offset
+      responses:
+        '200':
+          description: Metadata search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SearchRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          description: Search query text
+          example: "machine learning algorithms"
+        filters:
+          type: object
+          description: Metadata filters
+          properties:
+            tags:
+              type: array
+              items:
+                type: string
+              description: Filter by tags
+              example: ["ai", "research"]
+            note_type:
+              type: string
+              enum: [fleeting, literature, permanent, insight, agent-generated]
+              description: Filter by note type
+              example: "literature"
+            created_by:
+              type: string
+              description: Filter by creator
+              example: "user123"
+            date_range:
+              type: object
+              properties:
+                start:
+                  type: string
+                  format: date
+                  description: Start date (inclusive)
+                end:
+                  type: string
+                  format: date
+                  description: End date (inclusive)
+        semantic_weight:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.7
+          description: Weight for semantic similarity score
+        metadata_weight:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          default: 0.3
+          description: Weight for metadata relevance score
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 10
+          description: Maximum number of results
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Pagination offset
+
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          description: Search results
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        total_count:
+          type: integer
+          description: Total number of matching results
+          example: 45
+        query_id:
+          type: string
+          format: uuid
+          description: Unique identifier for this search query (for audit trail)
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        response_time_ms:
+          type: integer
+          description: Query execution time in milliseconds
+          example: 125
+
+    SearchResult:
+      type: object
+      properties:
+        note:
+          $ref: '#/components/schemas/Note'
+        rank:
+          type: integer
+          description: Result position (1-based)
+          example: 1
+        semantic_score:
+          type: number
+          format: float
+          description: Semantic similarity score (0.0-1.0)
+          example: 0.85
+        metadata_score:
+          type: number
+          format: float
+          description: Metadata relevance score (0.0-1.0)
+          example: 0.72
+        combined_score:
+          type: number
+          format: float
+          description: Final hybrid score (0.0-1.0)
+          example: 0.81
+
+    Note:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          example: "Introduction to Machine Learning"
+        content:
+          type: string
+          example: "Machine learning is a subset of artificial intelligence..."
+        note_type:
+          type: string
+          enum: [fleeting, literature, permanent, insight, agent-generated]
+          example: "literature"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["ai", "machine-learning", "research"]
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        created_by:
+          type: string
+          example: "user123"
+        is_ai_generated:
+          type: boolean
+          example: false
+        ai_justification:
+          type: string
+          nullable: true
+          example: "Generated by research agent v1.2"
+        version:
+          type: integer
+          example: 1
+        embedding_metadata:
+          type: object
+          properties:
+            model_name:
+              type: string
+              example: "openai-text-embedding-3-small"
+            model_version:
+              type: string
+              example: "1.0"
+            generated_at:
+              type: string
+              format: date-time
+              example: "2024-01-15T10:30:00Z"
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Invalid search parameters"
+        code:
+          type: string
+          description: Error code
+          example: "VALIDATION_ERROR"
+        details:
+          type: object
+          description: Additional error details
+          example:
+            field: "semantic_weight"
+            issue: "Must be between 0.0 and 1.0"
+
+  parameters:
+    PaginationLimit:
+      in: query
+      name: limit
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Maximum number of results
+    PaginationOffset:
+      in: query
+      name: offset
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Pagination offset
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Invalid search parameters"
+            code: "VALIDATION_ERROR"
+            details:
+              field: "semantic_weight"
+              issue: "Must be between 0.0 and 1.0"
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+securitySchemes:
+  ApiKeyAuth:
+    type: apiKey
+    in: header
+    name: X-API-Key
+  BearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT

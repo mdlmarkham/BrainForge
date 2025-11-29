@@ -1,6 +1,6 @@
 # Implementation Plan: Semantic Search Pipeline
 
-**Branch**: `001-semantic-search` | **Date**: 2025-11-28 | **Spec**: [../001-semantic-search/spec.md](../001-semantic-search/spec.md)
+**Branch**: `001-semantic-search` | **Date**: 2025-11-28 | **Spec**: [spec.md](spec.md)
 **Input**: Feature specification from `/specs/001-semantic-search/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
@@ -50,6 +50,7 @@ specs/001-semantic-search/
 ├── data-model.md        # Phase 1 data model design
 ├── quickstart.md        # Phase 1 quickstart guide
 ├── contracts/           # Phase 1 API contracts
+├── tasks.md             # Implementation tasks
 └── checklists/          # Compliance and requirements checklists
 ```
 
@@ -85,7 +86,7 @@ tests/
 ## Implementation Status
 
 ### Phase 0: Research - COMPLETED ✅
-- Research document created: [`specs/001-semantic-search/research.md`](../001-semantic-search/research.md)
+- Research document created: [`specs/001-semantic-search/research.md`](research.md)
 - Technical decisions documented for PGVector, embedding models, hybrid search, and API design
 - **Context7 Research Completed**: All open items researched with specific implementation patterns
   - PGVector HNSW indexing and hybrid search SQL patterns
@@ -94,30 +95,29 @@ tests/
 - Constitutional compliance verified for all research findings
 
 ### Phase 1: Design & Contracts - COMPLETED ✅
-- Data model documented: [`specs/001-semantic-search/data-model.md`](../001-semantic-search/data-model.md)
-- API contracts created: [`specs/001-semantic-search/contracts/openapi.yaml`](../001-semantic-search/contracts/openapi.yaml)
-- Quickstart guide created: [`specs/001-semantic-search/quickstart.md`](../001-semantic-search/quickstart.md)
-- Agent context updated: Roo agent context file updated with semantic search technology
+- Data model documented: [`specs/001-semantic-search/data-model.md`](data-model.md)
+- API contracts created: [`specs/001-semantic-search/contracts/openapi.yaml`](contracts/openapi.yaml)
+- Quickstart guide created: [`specs/001-semantic-search/quickstart.md`](quickstart.md)
+- Implementation tasks generated: [`specs/001-semantic-search/tasks.md`](tasks.md)
 
 ### Phase 2: Implementation - READY FOR DEVELOPMENT
 - Implementation ready to begin based on completed design artifacts
 - Constitutional compliance verified throughout design phase
 - Performance benchmarks established for validation
 - **All research gaps addressed** using Context7 documentation
-- **Implementation tasks generated**: [`specs/001-semantic-search/tasks.md`](../001-semantic-search/tasks.md)
+- **Implementation tasks generated** with proper dependency ordering
 
 ## Generated Artifacts
 
 ### Feature Branch: `001-semantic-search`
-- **Research**: [`specs/001-semantic-search/research.md`](../001-semantic-search/research.md)
-- **Data Model**: [`specs/001-semantic-search/data-model.md`](../001-semantic-search/data-model.md)
-- **API Contracts**: [`specs/001-semantic-search/contracts/openapi.yaml`](../001-semantic-search/contracts/openapi.yaml)
-- **Quickstart Guide**: [`specs/001-semantic-search/quickstart.md`](../001-semantic-search/quickstart.md)
-- **Implementation Tasks**: [`specs/001-semantic-search/tasks.md`](../001-semantic-search/tasks.md)
+- **Research**: [`specs/001-semantic-search/research.md`](research.md)
+- **Data Model**: [`specs/001-semantic-search/data-model.md`](data-model.md)
+- **API Contracts**: [`specs/001-semantic-search/contracts/openapi.yaml`](contracts/openapi.yaml)
+- **Quickstart Guide**: [`specs/001-semantic-search/quickstart.md`](quickstart.md)
+- **Implementation Tasks**: [`specs/001-semantic-search/tasks.md`](tasks.md)
 
 ### Master Integration
-- **Implementation Plan**: [`specs/master/plan.md`](plan.md) (this file)
-- **Agent Context**: [`.roo/rules/specify-rules.md`](../../.roo/rules/specify-rules.md) (updated)
+- **Implementation Plan**: [`specs/master/plan.md`](../master/plan.md) (updated)
 
 ## Next Steps
 
