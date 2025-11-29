@@ -1,205 +1,263 @@
-# Quickstart: Researcher Agent
+# Quickstart: Security & Quality Remediation
 
-**Feature**: 003-researcher-agent  
-**Date**: 2025-11-29
-
-## Overview
-
-The Researcher Agent is an AI-powered assistant that discovers, evaluates, and proposes external content for knowledge base integration with a human review workflow. It automates content discovery while maintaining constitutional compliance through human oversight.
+**Feature**: Security Remediation  
+**Date**: 2025-11-29  
+**Status**: Implementation Guide
 
 ## Prerequisites
 
-- BrainForge system running with PostgreSQL/PGVector
-- API keys for external content sources (Google Custom Search, Semantic Scholar, etc.)
-- Python 3.11+ environment
-- Required dependencies: FastAPI, PydanticAI, FastMCP, SpiffWorkflow
-
-## Quick Setup
-
-### 1. Environment Configuration
-
-Add required API keys to your environment:
+### Dependencies Installation
 
 ```bash
-# External content discovery APIs
-export GOOGLE_CSE_API_KEY=your_google_cse_key
-export GOOGLE_CSE_ENGINE_ID=your_search_engine_id
-export SEMANTIC_SCHOLAR_API_KEY=your_semantic_scholar_key
-export NEWS_API_KEY=your_news_api_key
+# Install security dependencies
+pip install python-jose[cryptography] passlib[bcrypt] python-multipart redis
+
+# Add to requirements.txt
+echo "python-jose[cryptography]==3.3.0" >> requirements.txt
+echo "passlib[bcrypt]==1.7.4" >> requirements.txt
+echo "python-multipart==0.0.6" >> requirements.txt
+echo "redis==5.0.1" >> requirements.txt
 ```
 
-### 2. Database Migration
+### Environment Configuration
 
-Run the database migration to add researcher agent tables:
+Create `.env` file from template:
 
 ```bash
-cd src
-python -m cli.migrate upgrade head
+cp .env.example .env
 ```
 
-### 3. Start the Service
+Edit `.env` with your configuration:
 
-Start the BrainForge API with researcher agent endpoints:
+```env
+# Authentication
+SECRET_KEY=your-super-secret-key-change-in-production
+JWT_EXPIRE_MINUTES=1440
+
+# Database
+DATABASE_URL=postgresql://brainforge_user:secure_password@localhost:5432/brainforge
+POSTGRES_USER=brainforge_user
+POSTGRES_PASSWORD=secure_password
+POSTGRES_DB=brainforge
+
+# Rate Limiting (optional)
+REDIS_URL=redis://localhost:6379
+RATE_LIMIT_REQUESTS=1000
+RATE_LIMIT_WINDOW=60
+```
+
+## Implementation Steps
+
+### Step 1: Database Migration
+
+Create user authentication tables:
 
 ```bash
-cd src
-uvicorn api.main:app --reload --port 8000
+# Generate migration
+alembic revision -m "Add user authentication tables"
+
+# Apply migration
+alembic upgrade head
 ```
 
-## Basic Usage
+### Step 2: User Model Implementation
 
-### 1. Initiate a Research Run
+Create [`src/models/orm/user.py`](src/models/orm/user.py:1):
 
-```bash
-curl -X POST http://localhost:8000/api/research/runs \
-  -H "Content-Type: application/json" \
-  -d '{
-    "topic": "machine learning interpretability",
-    "parameters": {
-      "sources": ["web", "academic"],
-      "max_results": 20,
-      "quality_threshold": 0.7
-    }
-  }'
+```python
+from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy.sql import func
+from src.models.orm.base import Base
+
+class User(Base):
+    __tablename__ = "users"
+    
+    username = Column(String(255), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 ```
 
-### 2. Monitor Research Progress
+### Step 3: Authentication Service
 
-```bash
-# Check run status
-curl http://localhost:8000/api/research/runs
+Create [`src/services/auth.py`](src/services/auth.py:1):
 
-# Get detailed results
-curl http://localhost:8000/api/research/runs/{run_id}/sources
+```python
+from datetime import datetime, timedelta
+from typing import Optional
+from uuid import UUID
+
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from src.models.orm.user import User
+from src.models.user import UserCreate
+
+class AuthService:
+    """JWT-based authentication service."""
+    
+    def __init__(self, secret_key: str, algorithm: str = "HS256", expire_minutes: int = 1440):
+        self.secret_key = secret_key
+        self.algorithm = algorithm
+        self.expire_minutes = expire_minutes
+        self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    
+    # Implementation continues...
 ```
 
-### 3. Review Proposed Content
+### Step 4: API Dependencies
 
-```bash
-# Get review queue
-curl http://localhost:8000/api/review/queue
+Update [`src/api/dependencies.py`](src/api/dependencies.py:1):
 
-# Submit review decision
-curl -X PATCH http://localhost:8000/api/review/queue/{item_id} \
-  -H "Content-Type: application/json" \
-  -d '{
-    "decision": "approve",
-    "notes": "High-quality source with relevant insights"
-  }'
+```python
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer
+import os
+
+from src.config.database import get_session
+from src.services.auth import AuthService
+from src.models.orm.user import User
+
+security = HTTPBearer()
+auth_service = AuthService(secret_key=os.getenv("SECRET_KEY"))
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    session: AsyncSession = Depends(get_session),
+) -> User:
+    # Implementation...
 ```
 
-### 4. View Integration Proposals
+### Step 5: Authentication Routes
 
-```bash
-# Get AI-generated integration suggestions
-curl http://localhost:8000/api/integration/proposals
+Create [`src/api/routes/auth.py`](src/api/routes/auth.py:1):
+
+```python
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.config.database import get_session
+from src.services.auth import AuthService
+from src.models.user import UserCreate, UserLogin, UserResponse
+from src.models.orm.user import User
+
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+@router.post("/register", response_model=UserResponse)
+async def register(user_create: UserCreate, session: AsyncSession = Depends(get_session)):
+    # Implementation...
 ```
 
-## Key Features
+### Step 6: Rate Limiting Middleware
 
-### Automated Content Discovery
-- Discovers content from web, academic, and news sources
-- Uses semantic similarity to find relevant materials
-- Configurable search parameters and quality thresholds
+Create [`src/api/middleware/rate_limit.py`](src/api/middleware/rate_limit.py:1):
 
-### Quality Assessment
-- Multi-factor scoring (credibility, relevance, freshness, completeness)
-- AI-powered evaluation with explainable rationale
-- Automatic filtering based on configurable thresholds
+```python
+from fastapi import Request, HTTPException
+from fastapi.responses import JSONResponse
+import redis
+import os
 
-### Human Review Workflow
-- Three-stage process: auto-filter → review queue → integration
-- Configurable quality thresholds for automatic filtering
-- Complete audit trails for all decisions
-
-### Integration Suggestions
-- AI-generated connections to existing knowledge
-- Suggested tags and classifications
-- Semantic similarity analysis
-
-## Configuration Options
-
-### Research Parameters
-```yaml
-# Default research configuration
-sources: ["web", "academic", "news"]
-max_results: 20
-quality_threshold: 0.7
-content_types: ["article", "paper", "report"]
-languages: ["en"]
+# Implementation for sliding window rate limiting
 ```
 
-### Quality Scoring Weights
-```yaml
-credibility_weight: 0.4
-relevance_weight: 0.3
-freshness_weight: 0.15
-completeness_weight: 0.15
+### Step 7: Update Existing Routes
+
+Protect existing API routes by adding authentication dependency:
+
+```python
+from src.api.dependencies import get_current_user
+
+@router.get("/protected-endpoint")
+async def protected_endpoint(user: User = Depends(get_current_user)):
+    # Existing implementation with user context
 ```
 
-### Review Workflow
-```yaml
-auto_reject_threshold: 0.3
-auto_approve_threshold: 0.9
-review_priority_cutoffs:
-  high: 0.8
-  medium: 0.5
-  low: 0.3
+## Testing
+
+### Unit Tests
+
+Create [`tests/unit/test_auth.py`](tests/unit/test_auth.py:1):
+
+```python
+import pytest
+from src.services.auth import AuthService
+from src.models.user import UserCreate
+
+@pytest.mark.asyncio
+async def test_user_registration():
+    # Test user creation and password hashing
+    pass
+
+@pytest.mark.asyncio
+async def test_jwt_token_creation():
+    # Test JWT token generation and validation
+    pass
 ```
 
-## Monitoring and Metrics
+### Integration Tests
 
-### Performance Metrics
-- Research run completion time (target: <30 minutes)
-- Content discovery success rate (target: 80%)
-- Quality assessment accuracy (target: 90% vs human evaluation)
-- Review processing rate (target: 15+ items/hour)
+Create [`tests/integration/test_auth.py`](tests/integration/test_auth.py:1):
 
-### Audit Trails
-- Complete record of all agent activities
-- Version tracking for AI models and agents
-- Decision rationale and modification history
+```python
+import pytest
+from fastapi.testclient import TestClient
+
+def test_user_registration_flow(client: TestClient):
+    # Test complete registration and login flow
+    pass
+
+def test_protected_endpoint_access(client: TestClient):
+    # Test authentication requirement for protected endpoints
+    pass
+```
+
+## Deployment Checklist
+
+- [ ] Environment variables configured in production
+- [ ] Database migration applied
+- [ ] Secret key rotated from default
+- [ ] Rate limiting configured appropriately
+- [ ] SSL/TLS certificates installed
+- [ ] Security headers configured
+- [ ] Logging and monitoring enabled
+
+## Security Best Practices
+
+1. **Secret Management**: Use environment variables or secrets manager
+2. **Token Expiration**: Set reasonable token expiration times
+3. **Password Policy**: Enforce strong password requirements
+4. **Rate Limiting**: Configure appropriate limits for your use case
+5. **SSL/TLS**: Always use HTTPS in production
+6. **Security Headers**: Implement CSP, HSTS, and other security headers
 
 ## Troubleshooting
 
 ### Common Issues
 
-**Research runs failing:**
-- Check external API key validity
-- Verify network connectivity to external services
-- Review error logs for specific failure reasons
+**Import Errors**: Ensure all imports use `src.` prefix
+**Database Connection**: Verify DATABASE_URL environment variable
+**JWT Validation**: Check SECRET_KEY configuration
+**Rate Limiting**: Ensure Redis is running if using distributed limiting
 
-**Quality assessment inconsistencies:**
-- Validate scoring weights configuration
-- Check AI model version and performance
-- Review evaluation rationale for insights
+### Debugging
 
-**Review workflow bottlenecks:**
-- Adjust quality thresholds for better filtering
-- Consider parallel processing for high-volume scenarios
-- Monitor reviewer assignment and workload
+Enable debug logging for authentication:
 
-### Debug Commands
-
-```bash
-# Check research run status
-curl http://localhost:8000/api/research/runs/{run_id}
-
-# View audit trail for specific run
-# (Implementation detail - depends on audit endpoint design)
-
-# Test external API connectivity
-curl "https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ENGINE_ID}&q=test"
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
 ```
 
 ## Next Steps
 
-After familiarizing yourself with the basic functionality:
+After implementing security remediation:
 
-1. **Customize research parameters** for your specific domain
-2. **Configure quality thresholds** based on your content standards  
-3. **Set up scheduled research runs** for proactive discovery
-4. **Integrate with existing workflows** through API calls
-5. **Monitor performance metrics** and optimize configurations
-
-The researcher agent is designed to scale from personal knowledge management to team-based curation workflows while maintaining constitutional compliance through its human review gates.
+1. **Monitor**: Set up security monitoring and alerting
+2. **Audit**: Regular security audits and penetration testing
+3. **Update**: Keep dependencies updated for security patches
+4. **Enhance**: Consider additional security features like 2FA

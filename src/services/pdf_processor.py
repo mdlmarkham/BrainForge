@@ -1,6 +1,7 @@
 """PDF processing service for BrainForge ingestion pipeline using pdfplumber."""
 
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -18,8 +19,29 @@ class PDFProcessor:
         self.logger = logging.getLogger(__name__)
         # Initialize pdfplumber parser
         self.parser = None
-        self._initialize_pdfplumber()
-    
+
+    def _validate_file_path(self, pdf_path: str) -> str:
+        """Validate and sanitize PDF file path to prevent directory traversal attacks."""
+        # Convert to absolute path and normalize
+        abs_path = os.path.abspath(pdf_path)
+        normalized_path = os.path.normpath(abs_path)
+        
+        # Check if path is within allowed directories
+        # For security, restrict to current working directory and subdirectories
+        current_dir = os.path.abspath(os.getcwd())
+        if not normalized_path.startswith(current_dir):
+            raise ValueError(f"PDF path {pdf_path} is outside allowed directory")
+        
+        # Check for directory traversal patterns
+        if '..' in normalized_path or normalized_path.startswith('/') or ':' in normalized_path:
+            raise ValueError(f"Invalid PDF path: {pdf_path}")
+            
+        # Check file extension
+        if not normalized_path.lower().endswith('.pdf'):
+            raise ValueError(f"File {pdf_path} is not a PDF file")
+            
+        return normalized_path
+
     def _initialize_pdfplumber(self):
         """Initialize pdfplumber PDF parser."""
         try:
@@ -32,6 +54,9 @@ class PDFProcessor:
     
     async def extract_metadata(self, pdf_path: str) -> Dict[str, Any]:
         """Extract metadata from PDF using pdfplumber or fallback method."""
+        # Validate file path
+        validated_path = self._validate_file_path(pdf_path)
+        
         start_time = time.time()
         
         try:
@@ -50,7 +75,7 @@ class PDFProcessor:
                     }
             else:
                 # Fallback metadata extraction using basic file analysis
-                metadata = await self._extract_metadata_fallback(pdf_path)
+                metadata = await self._extract_metadata_fallback(validated_path)
             
             processing_time = int((time.time() - start_time) * 1000)
             metadata["extraction_method"] = "pdfplumber" if self.parser else "fallback_basic"
@@ -65,6 +90,9 @@ class PDFProcessor:
     
     async def extract_text(self, pdf_path: str, method: str = "advanced") -> Dict[str, Any]:
         """Extract text from PDF with quality assessment."""
+        # Validate file path
+        validated_path = self._validate_file_path(pdf_path)
+        
         start_time = time.time()
         
         try:
@@ -72,7 +100,7 @@ class PDFProcessor:
             quality_score = 0.0
             
             if self.parser:
-                with self.parser.open(pdf_path) as pdf:
+                with self.parser.open(validated_path) as pdf:
                     # Extract text from all pages
                     text_parts = []
                     for page in pdf.pages:
@@ -139,10 +167,13 @@ class PDFProcessor:
     
     async def _extract_text_fallback(self, pdf_path: str) -> tuple[str, float]:
         """Fallback text extraction when pdfplumber is not available."""
+        # Validate file path
+        validated_path = self._validate_file_path(pdf_path)
+        
         # This would typically use alternative PDF libraries like PyPDF2
         try:
             import PyPDF2
-            with open(pdf_path, 'rb') as file:
+            with open(validated_path, 'rb') as file:
                 pdf_reader = PyPDF2.PdfReader(file)
                 text_parts = []
                 for page in pdf_reader.pages:

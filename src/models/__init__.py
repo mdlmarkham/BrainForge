@@ -26,6 +26,10 @@ from .quality_assessment import QualityAssessment, QualityAssessmentCreate, Qual
 from .research_review_queue import ResearchReviewQueue, ResearchReviewQueueCreate, ResearchReviewQueueUpdate
 from .integration_proposal import IntegrationProposal, IntegrationProposalCreate, IntegrationProposalUpdate, IntegrationProposalStatus
 from .research_audit_trail import ResearchAuditTrail, ResearchAuditTrailCreate, ResearchAuditTrailUpdate, AuditActionType
+from .mcp_tool import MCPTool, MCPToolCreate, MCPToolUpdate
+from .mcp_session import MCPSession, MCPSessionCreate, MCPSessionUpdate
+from .mcp_execution import MCPToolExecution, MCPToolExecutionCreate, MCPToolExecutionUpdate
+from .mcp_workflow import MCPWorkflow, MCPWorkflowCreate, MCPWorkflowUpdate
 
 __all__ = [
     "BaseEntity",
@@ -95,5 +99,17 @@ __all__ = [
     "ResearchAuditTrail",
     "ResearchAuditTrailCreate",
     "ResearchAuditTrailUpdate",
-    "AuditActionType"
+    "AuditActionType",
+    "MCPTool",
+    "MCPToolCreate",
+    "MCPToolUpdate",
+    "MCPSession",
+    "MCPSessionCreate",
+    "MCPSessionUpdate",
+    "MCPToolExecution",
+    "MCPToolExecutionCreate",
+    "MCPToolExecutionUpdate",
+    "MCPWorkflow",
+    "MCPWorkflowCreate",
+    "MCPWorkflowUpdate"
 ]

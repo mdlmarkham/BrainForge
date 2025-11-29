@@ -102,3 +102,13 @@ obsidian-sync/
 # Local development overrides
 docker-compose.override.yml
 local.env
+
+# Database configuration with credentials
+config/database.env
+
+# MCP Server specific
+.env.mcp
+mcp-cache/
+mcp-sessions/
+mcp-workflows/
+.spiffworkflow-cache/

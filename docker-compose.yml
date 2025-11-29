@@ -3,17 +3,18 @@ version: '3.8'
 services:
   database:
     image: pgvector/pgvector:pg16
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: brainforge
-      POSTGRES_USER: brainforge_user
-      POSTGRES_PASSWORD: brainforge_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./config/database.env:/tmp/database.env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U brainforge_user -d brainforge"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,11 +23,15 @@ services:
     build: .
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://brainforge_user:brainforge_password@database:5432/brainforge
+      - DATABASE_URL=${DATABASE_URL}
       - EMBEDDING_MODEL=text-embedding-3-small
       - EMBEDDING_DIMENSION=1536
       - LOG_LEVEL=INFO
+      - SECRET_KEY=${SECRET_KEY}
+      - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES}
     depends_on:
       database:
         condition: service_healthy
@@ -37,8 +42,10 @@ services:
 
   migrations:
     build: .
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://brainforge_user:brainforge_password@database:5432/brainforge
+      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       database:
         condition: service_healthy

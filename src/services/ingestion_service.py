@@ -313,9 +313,28 @@ class IngestionService:
         
         logger.info(f"Content integrated as note {note.id} for task {task_id}")
     
+    def _validate_file_path(self, file_path: str) -> str:
+        """Validate and sanitize file path to prevent directory traversal attacks."""
+        # Convert to absolute path and normalize
+        abs_path = os.path.abspath(file_path)
+        normalized_path = os.path.normpath(abs_path)
+        
+        # Check if path is within allowed directories
+        # For security, restrict to current working directory and subdirectories
+        current_dir = os.path.abspath(os.getcwd())
+        if not normalized_path.startswith(current_dir):
+            raise ValueError(f"File path {file_path} is outside allowed directory")
+        
+        # Check for directory traversal patterns
+        if '..' in normalized_path or normalized_path.startswith('/') or ':' in normalized_path:
+            raise ValueError(f"Invalid file path: {file_path}")
+            
+        return normalized_path
+
     def _calculate_content_hash(self, file_path: str) -> str:
         """Calculate content hash for deduplication."""
-        with open(file_path, 'rb') as f:
+        validated_path = self._validate_file_path(file_path)
+        with open(validated_path, 'rb') as f:
             return hashlib.sha256(f.read()).hexdigest()
     
     async def get_task_status(self, task_id: UUID) -> Dict[str, Any]:

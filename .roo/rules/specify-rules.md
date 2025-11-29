@@ -1,6 +1,6 @@
-﻿# BrainForge Development Guidelines
+# BrainForge Development Guidelines
 
-Auto-generated from all feature plans. Last updated: 2025-11-28
+Auto-generated from all feature plans. Last updated: 2025-11-29
 
 ## Active Technologies
 - Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy (master)
@@ -8,6 +8,8 @@ Auto-generated from all feature plans. Last updated: 2025-11-28
 - Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, dockling (PDF processing) (master)
 - PostgreSQL with PGVector extension for semantic indexing (master)
 - Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, FastMCP, SpiffWorkflow (master)
+- [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (master)
+- [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (master)
 
 - Python 3.11+ (constitution requirement) + PydanticAI (AI integration), FastMCP (MCP server framework), SpiffWorkflow (workflow orchestration), PostgreSQL/PGVector (vector database), Obsidian API integration (master)
 
@@ -27,9 +29,9 @@ cd src; pytest; ruff check .
 Python 3.11+ (constitution requirement): Follow standard conventions
 
 ## Recent Changes
+- master: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 - master: Added Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, FastMCP, SpiffWorkflow
-- master: Added Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, dockling (PDF processing)
-- master: Added Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy
+- master: Added Python 3.11+ (constitution requirement) + FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, FastMCP, SpiffWorkflow
 
 
 <!-- MANUAL ADDITIONS START -->

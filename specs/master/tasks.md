@@ -1,180 +1,175 @@
-# Implementation Tasks: Researcher Agent
+# Tasks: Security & Quality Remediation
 
-**Feature**: 003-researcher-agent  
+**Feature**: Security Remediation  
 **Date**: 2025-11-29  
-**Total Tasks**: 42  
-**MVP Scope**: User Story 1 (Automated Content Discovery)
+**Status**: Ready for Implementation
 
-## Dependencies & Story Completion Order
+## Summary
 
+Critical security fixes addressing 7 high-priority vulnerabilities. Implementation follows phased approach with 14 hours of critical fixes required before deployment.
+
+**Total Tasks**: 47 tasks across 7 security remediation areas  
+**Priority Order**: P1.1 → P1.2 → P1.3 → P1.4 → P1.5 → P1.6 → P1.7  
+**Parallel Opportunities**: 22 tasks can be executed in parallel  
+**MVP Scope**: Complete Phase 1 (all critical security fixes)
+
+## Dependencies
+
+### User Story Completion Order
 ```mermaid
 graph TD
-    Setup[Phase 1: Setup] --> Foundational[Phase 2: Foundational]
-    Foundational --> US1[Phase 3: US1 - Content Discovery]
-    US1 --> US2[Phase 4: US2 - Quality Assessment]
-    US2 --> US3[Phase 5: US3 - Review Workflow]
-    US3 --> Polish[Phase 6: Polish & Cross-Cutting]
+    P1.1[P1.1: Fix Import Paths] --> P1.2[P1.2: Remove Credentials]
+    P1.2 --> P1.3[P1.3: JWT Authentication]
+    P1.3 --> P1.4[P1.4: Path Traversal]
+    P1.3 --> P1.5[P1.5: Hash Security]
+    P1.3 --> P1.6[P1.6: SSL Verification]
+    P1.3 --> P1.7[P1.7: Rate Limiting]
 ```
 
-**Parallel Execution Opportunities**:
-- Database migrations can run parallel to service implementations
-- External API integrations can be developed independently
-- Model implementations can proceed in parallel within each phase
-- Contract tests can be written concurrently with implementation
+### Parallel Execution Examples
+- **P1.1**: All import fixes can be done in parallel (T001-T004)
+- **P1.2**: Environment setup tasks can run concurrently (T005-T008)
+- **P1.3**: Database migration, models, and services can be parallelized
+- **P1.4-P1.7**: Can be implemented simultaneously after P1.3 foundation
 
-## Phase 1: Setup
+## Phase 1: Setup - COMPLETED ✅
 
-### Project Initialization
+### Infrastructure Preparation
 
-- [x] T001 Create researcher agent database migration in alembic/versions/003_researcher_agent.py
-- [x] T002 Add researcher agent dependencies to requirements.txt (PydanticAI, FastMCP, SpiffWorkflow)
-- [x] T003 Create researcher agent configuration in config/researcher_agent.env
-- [x] T004 Set up external API configuration templates in config/api_keys.env.template
+- [x] T001 Install security dependencies in requirements.txt
+- [x] T002 [P] Create .env.example template with security configuration
+- [x] T003 [P] Update .gitignore to exclude .env files and credentials
+- [x] T004 [P] Update docker-compose.yml to use environment variables
 
-## Phase 2: Foundational
+## Phase 2: Foundational Security - COMPLETED ✅
 
-### Blocking Prerequisites
+### Critical Path - Must Complete Before User Stories
 
-- [x] T005 [P] Implement ResearchRun model in src/models/research_run.py
-- [x] T006 [P] Implement ContentSource model in src/models/content_source.py
-- [x] T007 [P] Implement QualityAssessment model in src/models/quality_assessment.py
-- [x] T008 [P] Implement ReviewQueue model in src/models/review_queue.py
-- [x] T009 [P] Implement IntegrationProposal model in src/models/integration_proposal.py
-- [x] T010 [P] Implement ResearchAuditTrail model in src/models/research_audit_trail.py
-- [x] T011 Create database migration for researcher agent tables in alembic/versions/003_researcher_agent.py
+- [x] T005 Fix import paths in src/services/pdf_processor.py (lines 8-9) - ALREADY CORRECT
+- [x] T006 Fix import paths in src/services/ingestion_service.py (lines 14-23) - ALREADY CORRECT
+- [x] T007 Fix import paths in src/api/routes/ingestion.py (lines 13-14) - ALREADY CORRECT
+- [x] T008 Fix import paths in src/services/base.py (line 9) - ALREADY CORRECT
+- [x] T009 Verify all imports compile without errors - ✅ ALL COMPILE SUCCESSFULLY
+- [x] T010 Update src/api/routes/agent.py to use environment variables for database URL - ALREADY USING ENV VARS
 
-## Phase 3: User Story 1 - Automated Content Discovery (P1)
+## Phase 3: User Story 1 - JWT Authentication (P1.3)
 
-**Goal**: Enable automated discovery of external content based on research topics  
-**Independent Test**: Initiate research runs with different topics and verify relevant source discovery
+**Goal**: Implement secure JWT-based authentication with user management  
+**Test Criteria**: Users can register, login, and access protected endpoints with valid tokens
 
-### Models & Services
+### Database & Models
 
-- [x] T012 [US1] Implement ResearchRunService in src/services/research_run_service.py
-- [x] T013 [US1] Implement ContentDiscoveryService in src/services/content_discovery_service.py
-- [x] T014 [US1] Implement GoogleCustomSearch integration in src/services/external/google_search.py
-- [x] T015 [US1] Implement SemanticScholar integration in src/services/external/semantic_scholar.py
-- [x] T016 [US1] Implement NewsAPI integration in src/services/external/news_api.py
+- [ ] T011 [P] [US1] Create database migration for users table in alembic/versions/004_user_auth.py
+- [ ] T012 [P] [US1] Create User ORM model in src/models/orm/user.py
+- [ ] T013 [P] [US1] Create Pydantic user models in src/models/user.py
+- [ ] T014 [US1] Apply database migration to create users table
+
+### Authentication Service
+
+- [ ] T015 [P] [US1] Implement AuthService with password hashing in src/services/auth.py
+- [ ] T016 [P] [US1] Implement JWT token generation and validation in AuthService
+- [ ] T017 [P] [US1] Implement user authentication methods in AuthService
+- [ ] T018 [US1] Add authentication dependencies in src/api/dependencies.py
 
 ### API Endpoints
 
-- [x] T017 [US1] Create research runs endpoint in src/api/routes/research.py
-- [x] T018 [US1] Implement research run creation API in src/api/routes/research.py
-- [x] T019 [US1] Implement research run status API in src/api/routes/research.py
-- [x] T020 [US1] Implement content sources listing API in src/api/routes/research.py
+- [ ] T019 [P] [US1] Create authentication routes in src/api/routes/auth.py
+- [ ] T020 [P] [US1] Implement user registration endpoint (/auth/register)
+- [ ] T021 [P] [US1] Implement user login endpoint (/auth/login)
+- [ ] T022 [P] [US1] Implement user profile endpoint (/auth/me)
+- [ ] T023 [US1] Update src/api/main.py to include authentication middleware
 
-### Integration & Testing
+### Integration
 
-- [x] T021 [US1] Create contract tests for research endpoints in tests/contract/test_research.py
-- [x] T022 [US1] Implement research run orchestration in src/services/research_orchestrator.py
+- [ ] T024 [US1] Protect existing API routes with authentication dependency
+- [ ] T025 [US1] Test complete authentication flow from registration to protected access
 
-## Phase 4: User Story 2 - Content Evaluation and Quality Assessment (P2)
+## Phase 4: User Story 2 - Environment Security (P1.2)
 
-**Goal**: Automated quality assessment of discovered content  
-**Independent Test**: Provide mixed-quality sources and verify correct scoring
+**Goal**: Remove hardcoded credentials and secure environment configuration  
+**Test Criteria**: No plaintext credentials in code, application starts with environment variables
 
-### Quality Assessment
+- [ ] T026 [P] [US2] Remove hardcoded POSTGRES_PASSWORD from docker-compose.yml
+- [ ] T027 [P] [US2] Update docker-compose.yml to use env_file configuration
+- [ ] T028 [P] [US2] Remove hardcoded DATABASE_URL from configuration files
+- [ ] T029 [US2] Verify no credentials remain in git history or current code
 
-- [x] T023 [US2] Implement QualityAssessmentService in src/services/quality_assessment_service.py
-- [x] T024 [US2] Implement credibility scoring logic in src/services/scoring/credibility_scorer.py
-- [x] T025 [US2] Implement relevance scoring logic in src/services/scoring/relevance_scorer.py
-- [x] T026 [US2] Implement freshness scoring logic in src/services/scoring/freshness_scorer.py
-- [x] T027 [US2] Implement completeness scoring logic in src/services/scoring/completeness_scorer.py
-- [x] T028 [US2] Implement weighted overall scoring in src/services/quality_assessment_service.py
+## Phase 5: User Story 3 - Path Traversal Protection (P1.4)
 
-### AI Integration
+**Goal**: Implement input validation and path sanitization  
+**Test Criteria**: Malicious path inputs are rejected, file operations restricted to safe zones
 
-- [x] T029 [US2] Implement PydanticAI integration for content summarization in src/services/ai/summarizer.py
-- [x] T030 [US2] Implement content classification AI in src/services/ai/classifier.py
-- [x] T031 [US2] Implement quality assessment rationale generation in src/services/ai/quality_rationale.py
+- [ ] T030 [P] [US3] Implement path validation middleware in src/api/middleware/path_validation.py
+- [ ] T031 [P] [US3] Add input sanitization for file operations in affected services
+- [ ] T032 [P] [US3] Create safe directory whitelist configuration
+- [ ] T033 [US3] Test path traversal attempts are blocked
 
-### API & Testing
+## Phase 6: User Story 4 - Hash Security (P1.5)
 
-- [x] T032 [US2] Implement quality assessment API in src/api/routes/quality.py
-- [x] T033 [US2] Create contract tests for quality assessment in tests/contract/test_quality.py
+**Goal**: Replace MD5 with SHA-256 for non-cryptographic hashing  
+**Test Criteria**: All MD5 usage replaced with secure alternatives
 
-## Phase 5: User Story 3 - Human Review and Integration Workflow (P3)
+- [ ] T034 [P] [US4] Audit codebase for MD5 hash usage
+- [ ] T035 [P] [US4] Replace MD5 with SHA-256 in src/services/ files
+- [ ] T036 [P] [US4] Update hash function references in configuration
+- [ ] T037 [US4] Verify MD5 is completely removed from codebase
 
-**Goal**: Streamlined human review process for agent recommendations  
-**Independent Test**: Create review queue and verify effective evaluation process
+## Phase 7: User Story 5 - SSL Verification (P1.6)
 
-### Review Workflow
+**Goal**: Enable SSL verification for all external API calls  
+**Test Criteria**: External API calls validate SSL certificates
 
-- [ ] T034 [US3] Implement ReviewQueueService in src/services/review_queue_service.py
-- [ ] T035 [US3] Implement review assignment logic in src/services/review_queue_service.py
-- [ ] T036 [US3] Implement review decision processing in src/services/review_processor.py
-- [ ] T037 [US3] Implement integration proposal generation in src/services/integration_proposal_service.py
+- [ ] T038 [P] [US5] Enable SSL verification in src/services/external/ API clients
+- [ ] T039 [P] [US5] Configure proper certificate handling for external services
+- [ ] T040 [US5] Test SSL verification with external API calls
 
-### Integration & Semantic Analysis
+## Phase 8: User Story 6 - Rate Limiting (P1.7)
 
-- [ ] T038 [US3] Implement semantic similarity analysis for integration in src/services/integration/semantic_analyzer.py
-- [ ] T039 [US3] Implement connection suggestion logic in src/services/integration/connection_suggester.py
-- [ ] T040 [US3] Implement tag suggestion logic in src/services/integration/tag_suggester.py
+**Goal**: Implement sliding window rate limiting with Redis  
+**Test Criteria**: API requests are rate limited per user and IP address
 
-### API & Testing
+- [ ] T041 [P] [US6] Implement rate limiting middleware in src/api/middleware/rate_limit.py
+- [ ] T042 [P] [US6] Configure Redis connection for distributed rate limiting
+- [ ] T043 [P] [US6] Set up rate limit configuration per endpoint
+- [ ] T044 [US6] Test rate limiting behavior with high request volumes
 
-- [ ] T041 [US3] Implement review queue API in src/api/routes/review.py
-- [ ] T042 [US3] Implement integration proposals API in src/api/routes/integration.py
-- [ ] T043 [US3] Create contract tests for review workflow in tests/contract/test_review.py
+## Phase 9: Polish & Cross-Cutting Concerns
 
-## Phase 6: Polish & Cross-Cutting Concerns
+### Testing & Quality Assurance
 
-### Error Handling & Resilience
+- [ ] T045 [P] Create unit tests for authentication service in tests/unit/test_auth.py
+- [ ] T046 [P] Create integration tests for security features in tests/integration/test_security.py
+- [ ] T047 [P] Perform security audit and penetration testing
 
-- [ ] T044 Implement retry logic for external APIs in src/services/external/base_api_client.py
-- [ ] T045 Implement circuit breaker pattern in src/services/external/circuit_breaker.py
-- [ ] T046 Implement research failure handling in src/services/research_orchestrator.py
+### Documentation & Deployment
 
-### Audit & Monitoring
-
-- [ ] T047 Implement comprehensive audit trail logging in src/services/audit/research_audit.py
-- [ ] T048 Implement performance metrics collection in src/services/metrics/research_metrics.py
-- [ ] T049 Implement activity reporting in src/services/reporting/research_reporter.py
-
-### Configuration & Optimization
-
-- [ ] T050 Implement configurable quality thresholds in config/researcher_agent.yaml
-- [ ] T051 Implement parallel processing for content discovery in src/services/content_discovery_service.py
-- [ ] T052 Implement content deduplication logic in src/services/deduplication/content_deduplicator.py
+- [ ] T048 [P] Update deployment checklist with security requirements
+- [ ] T049 [P] Document security configuration for production deployment
+- [ ] T050 Final security review and compliance verification
 
 ## Implementation Strategy
 
 ### MVP First Approach
-**Phase 3 (US1) delivers core functionality**: Automated content discovery with basic quality assessment
-- Research runs can be initiated and monitored
-- Content is discovered from external sources
-- Basic quality scoring is applied
-- Human review interface is available
+1. **Critical Path**: Complete Phase 2 foundational fixes (T005-T010)
+2. **Core Security**: Implement JWT authentication (Phase 3) as foundation
+3. **Incremental Delivery**: Add remaining security features in priority order
+4. **Testing**: Security tests implemented alongside each feature
 
-### Incremental Delivery
-1. **MVP**: US1 complete - basic research functionality
-2. **Enhanced**: US2 complete - sophisticated quality assessment
-3. **Full**: US3 complete - complete review and integration workflow
-4. **Polished**: Cross-cutting concerns addressed
+### Quality Gates
+- Each phase must pass security review before proceeding
+- All critical fixes (P1.1-P1.7) must be completed before deployment
+- Security tests must cover all authentication and protection mechanisms
 
-### Testing Strategy
-- Contract tests for all API endpoints
-- Integration tests for research workflows
-- Unit tests for scoring algorithms and AI integrations
-- Performance tests for research run completion times
+### Risk Mitigation
+- Backup existing configuration before security changes
+- Test each security feature independently before integration
+- Maintain rollback capability for each phase
 
-## Success Criteria Validation
+## Task Validation
 
-Each user story phase includes validation against success criteria:
-- **US1**: Research runs complete within 30 minutes, relevant content discovered for 80% of topics
-- **US2**: Quality assessment achieves 90% accuracy compared to human evaluation
-- **US3**: Reviewers can process 15+ items per hour with complete audit trails
-
-## Parallel Execution Examples
-
-**Within US1 Phase**:
-- T012-T016 (services) can run in parallel
-- T017-T020 (API endpoints) can run after service implementations
-- T021 (contract tests) can be written concurrently
-
-**Cross-Phase Opportunities**:
-- Database models (T005-T011) can be implemented while planning service layers
-- External API integrations can be developed independently of core business logic
-- AI integration components can be built in parallel with data processing logic
-
-This task breakdown enables efficient parallel development while maintaining clear dependencies and ensuring each phase delivers independently testable functionality.
+✅ All tasks follow required checklist format with Task IDs and file paths  
+✅ Tasks organized by user story for independent implementation  
+✅ Parallel opportunities identified and marked with [P]  
+✅ Dependencies clearly mapped between security features  
+✅ MVP scope defined with critical path prioritization  
+✅ Each user story has clear test criteria for completion verification

@@ -13,6 +13,17 @@ from fastapi.responses import JSONResponse
 from src.models.ingestion import ContentType, IngestionTask
 from src.services.ingestion_service import IngestionService
 
+
+async def with_timeout(coroutine, timeout_seconds: int = 30):
+    """Execute a coroutine with a timeout."""
+    try:
+        return await asyncio.wait_for(coroutine, timeout=timeout_seconds)
+    except asyncio.TimeoutError:
+        raise HTTPException(
+            status_code=408,
+            detail=f"Request timeout. Maximum allowed: {timeout_seconds} seconds"
+        )
+
 router = APIRouter()
 
 # Initialize ingestion service
@@ -46,22 +57,28 @@ async def ingest_pdf(
         # Handle optional tags
         tags_list = tags or []
         
-        # Create ingestion task
-        task = await ingestion_service.create_ingestion_task(
-            content_type=ContentType.PDF,
-            source_url=source_url,
-            file_name=file.filename,
-            file_size=file_size,
-            tags=tags_list,
-            priority=priority,
-            created_by="api_user"  # Would come from authentication
+        # Create ingestion task with timeout protection
+        task = await with_timeout(
+            ingestion_service.create_ingestion_task(
+                content_type=ContentType.PDF,
+                source_url=source_url,
+                file_name=file.filename,
+                file_size=file_size,
+                tags=tags_list,
+                priority=priority,
+                created_by="api_user"  # Would come from authentication
+            ),
+            timeout_seconds=30
         )
         
-        # Save uploaded file to temporary location
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file_path = temp_file.name
+        # Save uploaded file to temporary location with timeout
+        async def save_file():
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                content = await file.read()
+                temp_file.write(content)
+                return temp_file.name
+        
+        temp_file_path = await with_timeout(save_file(), timeout_seconds=30)
         
         # Process PDF asynchronously
         asyncio.create_task(ingestion_service.process_pdf_task(task.id, temp_file_path))
@@ -73,6 +90,8 @@ async def ingest_pdf(
             "message": "PDF accepted for processing"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -150,22 +169,28 @@ async def ingest_pdf_batch(
         task_ids = []
         
         for file in files:
-            # Create ingestion task for each PDF
+            # Create ingestion task for each PDF with timeout protection
             file_size = file.size or 0
-            task = await ingestion_service.create_ingestion_task(
-                content_type=ContentType.PDF,
-                file_name=file.filename,
-                file_size=file_size,
-                tags=["batch_processing"],
-                priority="normal",
-                created_by="api_user"
+            task = await with_timeout(
+                ingestion_service.create_ingestion_task(
+                    content_type=ContentType.PDF,
+                    file_name=file.filename,
+                    file_size=file_size,
+                    tags=["batch_processing"],
+                    priority="normal",
+                    created_by="api_user"
+                ),
+                timeout_seconds=30
             )
             
-            # Save uploaded file to temporary location
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-                content = await file.read()
-                temp_file.write(content)
-                temp_file_path = temp_file.name
+            # Save uploaded file to temporary location with timeout
+            async def save_file():
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                    content = await file.read()
+                    temp_file.write(content)
+                    return temp_file.name
+            
+            temp_file_path = await with_timeout(save_file(), timeout_seconds=30)
             
             # Process PDF asynchronously
             asyncio.create_task(ingestion_service.process_pdf_task(task.id, temp_file_path))
@@ -179,6 +204,8 @@ async def ingest_pdf_batch(
             "message": f"Batch processing accepted for {len(task_ids)} PDFs"
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

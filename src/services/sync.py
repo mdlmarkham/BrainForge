@@ -72,7 +72,7 @@ class SyncService:
     
     def _calculate_content_hash(self, content: str) -> str:
         """Calculate hash of note content for change detection."""
-        return hashlib.md5(content.encode('utf-8')).hexdigest()
+        return hashlib.sha256(content.encode('utf-8')).hexdigest()
     
     def _extract_note_type_from_path(self, path: str) -> NoteType:
         """Extract note type from file path."""

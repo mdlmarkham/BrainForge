@@ -1,0 +1,113 @@
+<![CDATA[<workflow_instructions>
+  <mode_overview>
+    Python development mode for BrainForge project - specialized in Python 3.11+, FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, FastMCP, and SpiffWorkflow development patterns.
+  </mode_overview>
+
+  <initialization_steps>
+    <step number="1">
+      <action>Understand the Python development request</action>
+      <details>
+        Parse the user's input to identify:
+        - Type of Python development needed (API, service, model, MCP tool, workflow)
+        - Specific BrainForge components involved
+        - Constitutional compliance requirements
+        - Database migration needs
+        - Testing requirements
+      </details>
+    </step>
+    
+    <step number="2">
+      <action>Gather BrainForge project context</action>
+      <tools>
+        <tool>codebase_search - Find relevant existing implementations</tool>
+        <tool>list_files - Understand project structure and patterns</tool>
+        <tool>read_file - Examine specific BrainForge patterns</tool>
+      </tools>
+      <brainforge_specific>
+        <check>Review existing models in src/models/ for Pydantic patterns</check>
+        <check>Examine services in src/services/ for async patterns</check>
+        <check>Check API routes in src/api/routes/ for FastAPI patterns</check>
+        <check>Review MCP tools in src/mcp/tools/ for FastMCP patterns</check>
+        <check>Examine workflows in src/mcp/workflows/ for SpiffWorkflow patterns</check>
+      </brainforge_specific>
+    </step>
+  </initialization_steps>
+
+  <main_workflow>
+    <phase name="analysis">
+      <description>Analyze BrainForge-specific requirements and patterns</description>
+      <steps>
+        <step>Identify affected BrainForge components and dependencies</step>
+        <step>Assess constitutional compliance requirements</step>
+        <step>Plan implementation following BrainForge patterns</step>
+        <step>Determine database migration strategy if needed</step>
+      </steps>
+    </phase>
+
+    <phase name="implementation">
+      <description>Implement Python code following BrainForge conventions</description>
+      <steps>
+        <step>Create/modify Pydantic models with constitutional mixins</step>
+        <step>Implement async services using BaseService patterns</step>
+        <step>Add FastAPI endpoints with proper error handling</step>
+        <step>Create MCP tools following FastMCP patterns</step>
+        <step>Implement workflows using SpiffWorkflow integration</step>
+        <step>Add proper database migrations using Alembic</step>
+      </steps>
+    </phase>
+
+    <phase name="validation">
+      <description>Verify implementation against BrainForge standards</description>
+      <steps>
+        <step>Run tests: cd src; pytest; ruff check .</step>
+        <step>Validate constitutional compliance</step>
+        <step>Check async patterns and error handling</step>
+        <step>Verify database migration integrity</step>
+        <step>Ensure MCP tool functionality</step>
+      </steps>
+    </phase>
+  </main_workflow>
+
+  <brainforge_specific_workflows>
+    <workflow name="api_endpoint_development">
+      <description>Create new FastAPI endpoints following BrainForge patterns</description>
+      <steps>
+        <step>Create Pydantic models in src/models/ with TimestampMixin and ProvenanceMixin</step>
+        <step>Implement service layer in src/services/ using async BaseService patterns</step>
+        <step>Add API route in src/api/routes/ with proper error handling and constitutional compliance</step>
+        <step>Create database migration if schema changes are needed</step>
+        <step>Add unit tests in tests/</step>
+      </steps>
+    </workflow>
+
+    <workflow name="mcp_tool_development">
+      <description>Create new MCP tools for BrainForge library</description>
+      <steps>
+        <step>Define tool schema in src/mcp/tools/</step>
+        <step>Implement tool logic with constitutional compliance checks</step>
+        <step>Register tool in src/mcp/server.py</step>
+        <step>Add workflow integration if needed</step>
+        <step>Create comprehensive tests</step>
+      </steps>
+    </workflow>
+
+    <workflow name="database_migration">
+      <description>Create database migrations for schema changes</description>
+      <steps>
+        <step>Create migration script: alembic revision --autogenerate -m "description"</step>
+        <step>Review and modify migration script as needed</step>
+        <step>Apply migration: alembic upgrade head</step>
+        <step>Test migration with existing data</step>
+      </steps>
+    </workflow>
+  </brainforge_specific_workflows>
+
+  <completion_criteria>
+    <criterion>All BrainForge requirements have been addressed</criterion>
+    <criterion>Code follows project conventions and patterns</criterion>
+    <criterion>Constitutional compliance is maintained</criterion>
+    <criterion>Tests pass: cd src; pytest; ruff check .</criterion>
+    <criterion>Database migrations are properly implemented</criterion>
+    <criterion>MCP tools are functional and registered</criterion>
+  </completion_criteria>
+</workflow_instructions>]]>

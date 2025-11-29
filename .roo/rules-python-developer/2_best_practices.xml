@@ -1,0 +1,262 @@
+<![CDATA[<best_practices>
+  <general_principles>
+    <principle priority="high">
+      <name>Async-First Architecture</name>
+      <description>All BrainForge code should be async-first, using async/await patterns throughout the codebase.</description>
+      <rationale>BrainForge uses FastAPI and async SQLAlchemy for high-performance operations. Async patterns ensure optimal resource utilization and scalability.</rationale>
+      <example>
+        <scenario>When implementing database operations</scenario>
+        <good><![CDATA[
+async def get_note_by_id(session: AsyncSession, note_id: UUID) -> Note | None:
+    stmt = select(Note).where(Note.id == note_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+        ]]></good>
+        <bad><![CDATA[
+def get_note_by_id(session: Session, note_id: UUID) -> Note | None:
+    return session.query(Note).filter(Note.id == note_id).first()
+        ]]></bad>
+      </example>
+    </principle>
+
+    <principle priority="high">
+      <name>Constitutional Compliance</name>
+      <description>All models and operations must maintain constitutional compliance through proper mixins and audit trails.</description>
+      <rationale>BrainForge has strict constitutional requirements for provenance tracking, audit trails, and compliance validation.</rationale>
+      <example>
+        <scenario>When creating Pydantic models</scenario>
+        <good><![CDATA[
+class ResearchRun(BrainForgeBaseModel, TimestampMixin, ProvenanceMixin):
+    """Research run model with constitutional compliance."""
+    
+    id: UUID = Field(default_factory=uuid4)
+    research_topic: str
+    status: ResearchStatus
+    constitutional_audit: Dict[str, Any] = Field(default_factory=dict)
+        ]]></good>
+        <bad><![CDATA[
+class ResearchRun(BaseModel):
+    id: UUID
+    research_topic: str
+    status: str
+        ]]></bad>
+      </example>
+    </principle>
+
+    <principle priority="medium">
+      <name>Service Layer Abstraction</name>
+      <description>Use the BaseService pattern for all database operations to maintain consistency and reusability.</description>
+      <rationale>BrainForge uses a consistent service layer pattern that abstracts database operations and provides common functionality.</rationale>
+      <example>
+        <scenario>When creating new services</scenario>
+        <good><![CDATA[
+class NoteService(BaseService[Note]):
+    """Service for note operations."""
+    
+    def __init__(self):
+        super().__init__(Note)
+    
+    async def search_notes(self, session: AsyncSession, query: str) -> List[Note]:
+        # Implement search logic using BaseService patterns
+        pass
+        ]]></good>
+        <bad><![CDATA[
+def search_notes(session: AsyncSession, query: str) -> List[Note]:
+    # Direct database operations without service abstraction
+    pass
+        ]]></bad>
+      </example>
+    </principle>
+  </general_principles>
+
+  <code_conventions>
+    <convention category="naming">
+      <rule>Use descriptive names with proper casing</rule>
+      <examples>
+        <good>note_service, semantic_search, mcp_tool_registry</good>
+        <bad>ns, ss, mtr</bad>
+      </examples>
+    </convention>
+    
+    <convention category="imports">
+      <rule>Organize imports with standard Python conventions</rule>
+      <template><![CDATA[
+# Standard library imports
+import asyncio
+from datetime import datetime
+from typing import List, Optional
+from uuid import UUID
+
+# Third-party imports
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+# BrainForge imports
+from src.models.base import BrainForgeBaseModel, TimestampMixin
+from src.services.base import BaseService
+        ]]></template>
+    </convention>
+
+    <convention category="type_hints">
+      <rule>Use comprehensive type hints for all functions and methods</rule>
+      <examples>
+        <good>async def create_note(session: AsyncSession, data: Dict[str, Any]) -> Note:</good>
+        <bad>def create_note(session, data):</bad>
+      </examples>
+    </convention>
+  </code_conventions>
+
+  <brainforge_specific_patterns>
+    <pattern name="pydantic_model_structure">
+      <description>Standard structure for BrainForge Pydantic models</description>
+      <template><![CDATA[
+from datetime import datetime
+from typing import Any, Dict, Optional
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field
+
+from src.models.base import BrainForgeBaseModel, TimestampMixin, ProvenanceMixin
+
+
+class MyModelCreate(BrainForgeBaseModel):
+    """Creation model for MyModel."""
+    
+    name: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class MyModelUpdate(BrainForgeBaseModel):
+    """Update model for MyModel."""
+    
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+
+
+class MyModel(BrainForgeBaseModel, TimestampMixin, ProvenanceMixin):
+    """Complete MyModel with constitutional compliance."""
+    
+    id: UUID = Field(default_factory=uuid4)
+    name: str
+    description: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    constitutional_audit: Dict[str, Any] = Field(default_factory=dict)
+    
+    class Config:
+        from_attributes = True
+        ]]></template>
+    </pattern>
+
+    <pattern name="service_implementation">
+      <description>Standard pattern for BrainForge service implementations</description>
+      <template><![CDATA[
+from typing import Any, List, Optional
+from uuid import UUID
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from src.services.base import BaseService
+from src.models.my_model import MyModel, MyModelCreate, MyModelUpdate
+
+
+class MyModelService(BaseService[MyModel]):
+    """Service for MyModel operations."""
+    
+    def __init__(self):
+        super().__init__(MyModel)
+    
+    async def create(self, session: AsyncSession, data: MyModelCreate) -> MyModel:
+        """Create a new MyModel with constitutional compliance."""
+        model_data = data.model_dump()
+        model_data["constitutional_audit"] = {"created_by": "system", "compliance_checked": True}
+        return await super().create(session, model_data)
+    
+    async def search_by_name(self, session: AsyncSession, name: str) -> List[MyModel]:
+        """Search MyModels by name."""
+        stmt = select(self.model_class).where(self.model_class.name.ilike(f"%{name}%"))
+        result = await session.execute(stmt)
+        return result.scalars().all()
+        ]]></template>
+    </pattern>
+
+    <pattern name="mcp_tool_implementation">
+      <description>Standard pattern for MCP tool implementations</description>
+      <template><![CDATA[
+from typing import Any, Dict
+from uuid import UUID
+
+from fastmcp import FastMCP
+from pydantic import BaseModel, Field
+
+from src.services.database import DatabaseService
+
+
+class SearchNotesInput(BaseModel):
+    """Input model for search_notes tool."""
+    
+    query: str = Field(..., description="Search query")
+    limit: int = Field(10, description="Maximum number of results")
+    similarity_threshold: float = Field(0.7, description="Minimum similarity score")
+
+
+class MCPTools:
+    """MCP tools for BrainForge operations."""
+    
+    def __init__(self, database_service: DatabaseService):
+        self.database_service = database_service
+    
+    async def search_notes(self, input: SearchNotesInput) -> Dict[str, Any]:
+        """Search notes using semantic search."""
+        # Implement search logic with constitutional compliance
+        return {
+            "results": [],
+            "total_count": 0,
+            "constitutional_compliance": {"audit_trail": "search_executed"}
+        }
+        ]]></template>
+    </pattern>
+  </brainforge_specific_patterns>
+
+  <common_pitfalls>
+    <pitfall>
+      <description>Forgetting constitutional compliance in models</description>
+      <why_problematic>BrainForge requires all models to track provenance and maintain audit trails for compliance.</why_problematic>
+      <correct_approach>Always include TimestampMixin and ProvenanceMixin in model definitions and maintain constitutional_audit fields.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Using synchronous database operations</description>
+      <why_problematic>BrainForge uses async SQLAlchemy for optimal performance. Synchronous operations can block the event loop.</why_problematic>
+      <correct_approach>Always use async database operations with AsyncSession and proper await patterns.</correct_approach>
+    </pitfall>
+
+    <pitfall>
+      <description>Direct database access without service abstraction</description>
+      <why_problematic>Direct database access bypasses BrainForge's service layer patterns and can lead to inconsistent error handling.</why_problematic>
+      <correct_approach>Use BaseService patterns for all database operations to maintain consistency and reusability.</correct_approach>
+    </pitfall>
+  </common_pitfalls>
+
+  <quality_checklist>
+    <category name="before_starting">
+      <item>Understand constitutional compliance requirements</item>
+      <item>Review existing BrainForge patterns in similar components</item>
+      <item>Plan database migration strategy if schema changes are needed</item>
+    </category>
+    <category name="during_implementation">
+      <item>Follow async-first patterns for all operations</item>
+      <item>Implement proper error handling and logging</item>
+      <item>Maintain constitutional compliance throughout</item>
+      <item>Use BaseService patterns for database operations</item>
+    </category>
+    <category name="before_completion">
+      <item>Run tests: cd src; pytest; ruff check .</item>
+      <item>Verify constitutional compliance audit trails</item>
+      <item>Test async operations with proper error handling</item>
+      <item>Validate database migrations if applicable</item>
+    </category>
+  </quality_checklist>
+</best_practices>]]>
