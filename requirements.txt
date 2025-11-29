@@ -42,6 +42,13 @@ pre-commit==3.8.0
 black==24.10.0
 mypy==1.15.0
 
+# External API clients for researcher agent
+google-api-python-client==2.130.0
+semanticscholar==0.4.0
+newsapi-python==0.2.6
+requests==2.32.3
+beautifulsoup4==4.12.3
+
 # Documentation
 mkdocs==1.6.0
 mkdocs-material==9.5.31

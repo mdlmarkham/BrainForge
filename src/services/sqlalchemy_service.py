@@ -5,6 +5,7 @@ from typing import Any, Type
 from uuid import UUID
 
 from sqlalchemy import create_engine, select, update, delete
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
@@ -31,8 +32,8 @@ class NoteModel(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     content: Mapped[str] = mapped_column(nullable=False)
     note_type: Mapped[str] = mapped_column(nullable=False)
-    metadata: Mapped[dict] = mapped_column(default=dict)
-    provenance: Mapped[dict] = mapped_column(default=dict)
+    note_metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    provenance: Mapped[dict] = mapped_column(JSONB, default=dict)
     version: Mapped[int] = mapped_column(default=1)
     created_at: Mapped[str] = mapped_column(nullable=False)
     updated_at: Mapped[str] = mapped_column(nullable=False)
@@ -44,9 +45,10 @@ class NoteModel(Base):
 class SQLAlchemyService(BaseService):
     """Base service implementation using SQLAlchemy."""
     
-    def __init__(self, database_url: str, model_class: Type[Base]):
+    def __init__(self, database_url: str, model_class: Type[Any], pydantic_model: Type[Any]):
         self.database_url = database_url
         self.model_class = model_class
+        self._pydantic_model = pydantic_model
         self.engine = create_async_engine(database_url)
         self.async_session = async_sessionmaker(
             self.engine, class_=AsyncSession, expire_on_commit=False
@@ -122,7 +124,7 @@ class SQLAlchemyService(BaseService):
     def _to_pydantic(self, db_model: Base) -> Any:
         """Convert SQLAlchemy model to Pydantic model."""
         # This is a simplified conversion - in practice, you'd map fields properly
-        model_data = {column.name: getattr(db_model, column.name) 
+        model_data = {column.name: getattr(db_model, column.name)
                      for column in db_model.__table__.columns}
         return self._pydantic_model(**model_data)
 
@@ -131,8 +133,7 @@ class SQLAlchemyNoteService(SQLAlchemyService):
     """Note service implementation using SQLAlchemy."""
     
     def __init__(self, database_url: str):
-        super().__init__(database_url, NoteModel)
-        self._pydantic_model = Note
+        super().__init__(database_url, NoteModel, Note)
 
 
 # Update the database service to use SQLAlchemy implementation
@@ -141,8 +142,7 @@ class DatabaseService(SQLAlchemyService):
     
     def __init__(self, database_url: str):
         # Use NoteModel as default for base implementation
-        super().__init__(database_url, NoteModel)
-        self._pydantic_model = Note
+        super().__init__(database_url, NoteModel, Note)
 
 
 class NoteService(DatabaseService):

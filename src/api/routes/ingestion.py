@@ -10,8 +10,8 @@ from uuid import UUID
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import JSONResponse
 
-from models.ingestion import ContentType, IngestionTask
-from services.ingestion_service import IngestionService
+from src.models.ingestion import ContentType, IngestionTask
+from src.services.ingestion_service import IngestionService
 
 router = APIRouter()
 

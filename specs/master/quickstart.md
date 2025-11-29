@@ -1,355 +1,205 @@
-# Quickstart: PDF Processing for Ingestion Curation
+# Quickstart: Researcher Agent
 
-**Feature**: Add PDF processing capability using dockling  
-**Date**: 2025-11-29  
-**Branch**: 002-ingestion-curation
+**Feature**: 003-researcher-agent  
+**Date**: 2025-11-29
 
 ## Overview
 
-This guide provides step-by-step instructions for implementing PDF processing capabilities in the BrainForge ingestion pipeline using dockling for text extraction.
+The Researcher Agent is an AI-powered assistant that discovers, evaluates, and proposes external content for knowledge base integration with a human review workflow. It automates content discovery while maintaining constitutional compliance through human oversight.
 
 ## Prerequisites
 
+- BrainForge system running with PostgreSQL/PGVector
+- API keys for external content sources (Google Custom Search, Semantic Scholar, etc.)
 - Python 3.11+ environment
-- Existing BrainForge installation
-- PostgreSQL database with PGVector extension
-- Docker (for containerized deployment)
+- Required dependencies: FastAPI, PydanticAI, FastMCP, SpiffWorkflow
 
-## Installation
+## Quick Setup
 
-### 1. Add Dependencies
+### 1. Environment Configuration
 
-Add the following dependencies to `requirements.txt`:
-
-```txt
-dockling>=1.2.0
-python-multipart>=0.0.6
-```
-
-### 2. Install Dependencies
+Add required API keys to your environment:
 
 ```bash
-pip install -r requirements.txt
+# External content discovery APIs
+export GOOGLE_CSE_API_KEY=your_google_cse_key
+export GOOGLE_CSE_ENGINE_ID=your_search_engine_id
+export SEMANTIC_SCHOLAR_API_KEY=your_semantic_scholar_key
+export NEWS_API_KEY=your_news_api_key
 ```
 
-## Implementation Steps
+### 2. Database Migration
 
-### Step 1: Create PDF Data Models
+Run the database migration to add researcher agent tables:
 
-Create `src/models/pdf_metadata.py`:
-
-```python
-from sqlalchemy import Column, String, Integer, DateTime, Float, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
-from .base import Base
-
-class PDFMetadata(Base):
-    __tablename__ = "pdf_metadata"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    ingestion_task_id = Column(UUID(as_uuid=True), ForeignKey("ingestion_tasks.id"), nullable=False)
-    page_count = Column(Integer, nullable=False)
-    author = Column(String, nullable=True)
-    title = Column(String, nullable=True)
-    subject = Column(String, nullable=True)
-    creation_date = Column(DateTime, nullable=True)
-    modification_date = Column(DateTime, nullable=True)
-    pdf_version = Column(String, nullable=False)
-    encryption_status = Column(String, nullable=False)
-    extraction_method = Column(String, nullable=False)
-    extraction_quality_score = Column(Float, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+```bash
+cd src
+python -m cli.migrate upgrade head
 ```
 
-### Step 2: Create PDF Processing Service
+### 3. Start the Service
 
-Create `src/services/pdf_processor.py`:
+Start the BrainForge API with researcher agent endpoints:
 
-```python
-import dockling
-from typing import Optional, Dict, Any
-from .base import BaseService
-
-class PDFProcessor(BaseService):
-    def __init__(self):
-        self.parser = dockling.PDFParser()
-    
-    async def extract_metadata(self, pdf_path: str) -> Dict[str, Any]:
-        """Extract metadata from PDF using dockling"""
-        document = self.parser.parse(pdf_path)
-        return {
-            "page_count": document.page_count,
-            "author": document.author,
-            "title": document.title,
-            "subject": document.subject,
-            "creation_date": document.creation_date,
-            "modification_date": document.modification_date,
-            "pdf_version": document.pdf_version,
-            "encryption_status": document.encryption_status
-        }
-    
-    async def extract_text(self, pdf_path: str, method: str = "advanced") -> Dict[str, Any]:
-        """Extract text from PDF with quality assessment"""
-        document = self.parser.parse(pdf_path)
-        
-        if method == "basic":
-            text = document.extract_text_basic()
-        else:
-            text = document.extract_text_advanced()
-        
-        quality_score = self._assess_text_quality(text)
-        
-        return {
-            "extracted_text": text,
-            "quality_score": quality_score,
-            "method": method,
-            "character_count": len(text),
-            "word_count": len(text.split())
-        }
-    
-    def _assess_text_quality(self, text: str) -> float:
-        """Assess quality of extracted text (0.0-1.0)"""
-        if not text or len(text.strip()) < 100:
-            return 0.0
-        
-        # Basic quality assessment based on text characteristics
-        lines = text.split('\n')
-        avg_line_length = sum(len(line.strip()) for line in lines) / len(lines)
-        
-        # Higher score for longer average line length and fewer empty lines
-        empty_lines = sum(1 for line in lines if not line.strip())
-        quality = min(1.0, avg_line_length / 50) * (1 - empty_lines / len(lines))
-        
-        return max(0.0, min(1.0, quality))
+```bash
+cd src
+uvicorn api.main:app --reload --port 8000
 ```
 
-### Step 3: Extend Ingestion Service
+## Basic Usage
 
-Update `src/services/ingestion.py` to include PDF processing:
+### 1. Initiate a Research Run
 
-```python
-# Add PDF processing imports
-from .pdf_processor import PDFProcessor
-
-class IngestionService(BaseService):
-    def __init__(self):
-        super().__init__()
-        self.pdf_processor = PDFProcessor()
-    
-    async def process_pdf(self, file_path: str, task_id: UUID) -> Dict[str, Any]:
-        """Process PDF file through full ingestion pipeline"""
-        try:
-            # Step 1: Extract metadata
-            metadata = await self.pdf_processor.extract_metadata(file_path)
-            
-            # Step 2: Extract text with quality assessment
-            text_result = await self.pdf_processor.extract_text(file_path)
-            
-            # Step 3: Generate summary and classifications
-            summary = await self._generate_summary(text_result["extracted_text"])
-            classifications = await self._classify_content(text_result["extracted_text"])
-            
-            return {
-                "metadata": metadata,
-                "text_result": text_result,
-                "summary": summary,
-                "classifications": classifications,
-                "success": True
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-```
-
-### Step 4: Add API Routes
-
-Update `src/api/routes/ingestion.py` to include PDF endpoints:
-
-```python
-from fastapi import UploadFile, File, Form
-from typing import List, Optional
-
-@router.post("/pdf")
-async def ingest_pdf(
-    file: UploadFile = File(...),
-    source_url: Optional[str] = Form(None),
-    tags: Optional[List[str]] = Form([]),
-    priority: str = Form("normal")
-):
-    """Submit PDF for ingestion processing"""
-    # Validate file type
-    if not file.content_type == "application/pdf":
-        raise HTTPException(400, "File must be PDF")
-    
-    # Validate file size (100MB limit)
-    if file.size > 100 * 1024 * 1024:
-        raise HTTPException(413, "PDF file too large (>100MB)")
-    
-    # Create ingestion task
-    task = await ingestion_service.create_pdf_task(
-        file.filename, file.size, source_url, tags, priority
-    )
-    
-    # Process asynchronously
-    asyncio.create_task(ingestion_service.process_pdf_task(task.id))
-    
-    return {
-        "task_id": task.id,
-        "status": "accepted",
-        "estimated_completion": datetime.now() + timedelta(minutes=2)
+```bash
+curl -X POST http://localhost:8000/api/research/runs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "machine learning interpretability",
+    "parameters": {
+      "sources": ["web", "academic"],
+      "max_results": 20,
+      "quality_threshold": 0.7
     }
+  }'
 ```
 
-### Step 5: Create Database Migration
-
-Create migration for PDF metadata table:
-
-```python
-# alembic/versions/002_add_pdf_processing.py
-from alembic import op
-import sqlalchemy as sa
-
-def upgrade():
-    op.create_table(
-        'pdf_metadata',
-        sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('page_count', sa.Integer(), nullable=False),
-        sa.Column('author', sa.String(), nullable=True),
-        sa.Column('title', sa.String(), nullable=True),
-        sa.Column('subject', sa.String(), nullable=True),
-        sa.Column('creation_date', sa.DateTime(), nullable=True),
-        sa.Column('modification_date', sa.DateTime(), nullable=True),
-        sa.Column('pdf_version', sa.String(), nullable=False),
-        sa.Column('encryption_status', sa.String(), nullable=False),
-        sa.Column('extraction_method', sa.String(), nullable=False),
-        sa.Column('extraction_quality_score', sa.Float(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()')),
-        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()')),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id']),
-        sa.PrimaryKeyConstraint('id')
-    )
-    
-    # Add PDF content type to ingestion_tasks
-    op.execute("ALTER TYPE content_type ADD VALUE 'pdf'")
-
-def downgrade():
-    op.drop_table('pdf_metadata')
-```
-
-## Testing
-
-### Unit Tests
-
-Create `tests/unit/test_pdf_processor.py`:
-
-```python
-import pytest
-from src.services.pdf_processor import PDFProcessor
-
-class TestPDFProcessor:
-    @pytest.fixture
-    def processor(self):
-        return PDFProcessor()
-    
-    def test_text_quality_assessment(self, processor):
-        # Test quality assessment with various text samples
-        assert processor._assess_text_quality("") == 0.0
-        assert processor._assess_text_quality("Short text") == 0.0
-        assert processor._assess_text_quality("Valid text with reasonable length") > 0.5
-```
-
-### Integration Tests
-
-Create `tests/integration/test_pdf_ingestion.py`:
-
-```python
-import pytest
-from fastapi.testclient import TestClient
-
-class TestPDFIngestion:
-    def test_pdf_upload(self, client: TestClient):
-        # Test PDF upload and processing
-        with open("test.pdf", "rb") as f:
-            response = client.post("/api/ingestion/pdf", files={"file": f})
-            assert response.status_code == 202
-            assert "task_id" in response.json()
-```
-
-## Deployment
-
-### Docker Configuration
-
-Update `Dockerfile` to include PDF processing dependencies:
-
-```dockerfile
-# Add PDF processing tools
-RUN apt-get update && apt-get install -y \
-    poppler-utils \
-    && rm -rf /var/lib/apt/lists/*
-```
-
-### Environment Variables
-
-Add PDF processing configuration to environment:
+### 2. Monitor Research Progress
 
 ```bash
-# config/database.env
-PDF_PROCESSING_MAX_SIZE=100MB
-PDF_PROCESSING_TIMEOUT=120
-DOCKLING_CACHE_SIZE=1000
+# Check run status
+curl http://localhost:8000/api/research/runs
+
+# Get detailed results
+curl http://localhost:8000/api/research/runs/{run_id}/sources
 ```
 
-## Usage Examples
+### 3. Review Proposed Content
 
-### Basic PDF Ingestion
+```bash
+# Get review queue
+curl http://localhost:8000/api/review/queue
 
-```python
-import requests
-
-# Upload PDF for processing
-files = {'file': open('research_paper.pdf', 'rb')}
-data = {'tags': ['research', 'ai'], 'priority': 'high'}
-response = requests.post('http://localhost:8000/api/ingestion/pdf', files=files, data=data)
-task_id = response.json()['task_id']
-
-# Check processing status
-status = requests.get(f'http://localhost:8000/api/ingestion/pdf/{task_id}').json()
+# Submit review decision
+curl -X PATCH http://localhost:8000/api/review/queue/{item_id} \
+  -H "Content-Type: application/json" \
+  -d '{
+    "decision": "approve",
+    "notes": "High-quality source with relevant insights"
+  }'
 ```
 
-### Batch Processing
+### 4. View Integration Proposals
 
-```python
-# Upload multiple PDFs
-files = [('files', open('doc1.pdf', 'rb')), ('files', open('doc2.pdf', 'rb'))]
-data = {'batch_name': 'research_papers'}
-response = requests.post('http://localhost:8000/api/ingestion/pdf/batch', files=files, data=data)
+```bash
+# Get AI-generated integration suggestions
+curl http://localhost:8000/api/integration/proposals
 ```
+
+## Key Features
+
+### Automated Content Discovery
+- Discovers content from web, academic, and news sources
+- Uses semantic similarity to find relevant materials
+- Configurable search parameters and quality thresholds
+
+### Quality Assessment
+- Multi-factor scoring (credibility, relevance, freshness, completeness)
+- AI-powered evaluation with explainable rationale
+- Automatic filtering based on configurable thresholds
+
+### Human Review Workflow
+- Three-stage process: auto-filter → review queue → integration
+- Configurable quality thresholds for automatic filtering
+- Complete audit trails for all decisions
+
+### Integration Suggestions
+- AI-generated connections to existing knowledge
+- Suggested tags and classifications
+- Semantic similarity analysis
+
+## Configuration Options
+
+### Research Parameters
+```yaml
+# Default research configuration
+sources: ["web", "academic", "news"]
+max_results: 20
+quality_threshold: 0.7
+content_types: ["article", "paper", "report"]
+languages: ["en"]
+```
+
+### Quality Scoring Weights
+```yaml
+credibility_weight: 0.4
+relevance_weight: 0.3
+freshness_weight: 0.15
+completeness_weight: 0.15
+```
+
+### Review Workflow
+```yaml
+auto_reject_threshold: 0.3
+auto_approve_threshold: 0.9
+review_priority_cutoffs:
+  high: 0.8
+  medium: 0.5
+  low: 0.3
+```
+
+## Monitoring and Metrics
+
+### Performance Metrics
+- Research run completion time (target: <30 minutes)
+- Content discovery success rate (target: 80%)
+- Quality assessment accuracy (target: 90% vs human evaluation)
+- Review processing rate (target: 15+ items/hour)
+
+### Audit Trails
+- Complete record of all agent activities
+- Version tracking for AI models and agents
+- Decision rationale and modification history
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **PDF parsing fails**: Check if PDF is corrupted or password-protected
-2. **Text extraction quality low**: Try advanced extraction method or manual review
-3. **Processing timeout**: Reduce PDF size or increase timeout configuration
-4. **Memory issues**: Monitor container memory usage and adjust limits
+**Research runs failing:**
+- Check external API key validity
+- Verify network connectivity to external services
+- Review error logs for specific failure reasons
 
-### Performance Optimization
+**Quality assessment inconsistencies:**
+- Validate scoring weights configuration
+- Check AI model version and performance
+- Review evaluation rationale for insights
 
-- Use batch processing for multiple PDFs
-- Implement caching for repeated PDF processing
-- Monitor extraction quality scores for optimization
-- Consider parallel processing for large PDF collections
+**Review workflow bottlenecks:**
+- Adjust quality thresholds for better filtering
+- Consider parallel processing for high-volume scenarios
+- Monitor reviewer assignment and workload
+
+### Debug Commands
+
+```bash
+# Check research run status
+curl http://localhost:8000/api/research/runs/{run_id}
+
+# View audit trail for specific run
+# (Implementation detail - depends on audit endpoint design)
+
+# Test external API connectivity
+curl "https://www.googleapis.com/customsearch/v1?key=${GOOGLE_CSE_API_KEY}&cx=${GOOGLE_CSE_ENGINE_ID}&q=test"
+```
 
 ## Next Steps
 
-After implementation, proceed with:
-1. Comprehensive testing with various PDF types
-2. Performance benchmarking and optimization
-3. Integration with existing review workflows
-4. User acceptance testing and feedback collection
+After familiarizing yourself with the basic functionality:
+
+1. **Customize research parameters** for your specific domain
+2. **Configure quality thresholds** based on your content standards  
+3. **Set up scheduled research runs** for proactive discovery
+4. **Integrate with existing workflows** through API calls
+5. **Monitor performance metrics** and optimize configurations
+
+The researcher agent is designed to scale from personal knowledge management to team-based curation workflows while maintaining constitutional compliance through its human review gates.

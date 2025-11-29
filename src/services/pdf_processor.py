@@ -5,8 +5,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from models.pdf_metadata import PDFMetadataCreate
-from models.pdf_processing_result import PDFProcessingResultCreate
+from src.models.pdf_metadata import PDFMetadataCreate
+from src.models.pdf_processing_result import PDFProcessingResultCreate
 
 logger = logging.getLogger(__name__)
 

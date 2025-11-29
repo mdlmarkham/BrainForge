@@ -488,3 +488,7 @@ def create_semantic_search(embedding_generator: EmbeddingGenerator,
         return MockSemanticSearch(embedding_generator, vector_store, hnsw_index, database_service)
     else:
         return SemanticSearch(embedding_generator, vector_store, hnsw_index, database_service)
+
+
+# Alias for backward compatibility
+SemanticSearchService = SemanticSearch

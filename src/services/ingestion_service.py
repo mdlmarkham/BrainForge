@@ -11,20 +11,23 @@ from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.ingestion import (
+from src.models.ingestion import (
     ContentType, IngestionTask, IngestionTaskCreate, IngestionTaskUpdate, ProcessingState
 )
-from models.content_source import ContentSource, ContentSourceCreate
-from models.processing_result import ProcessingResult, ProcessingResultCreate
-from models.pdf_metadata import PDFMetadata, PDFMetadataCreate
-from models.pdf_processing_result import PDFProcessingResult, PDFProcessingResultCreate
-from models.review_queue import ReviewQueue, ReviewQueueCreate, ReviewStatus
-from models.audit_trail import AuditTrail, AuditTrailCreate
-from models.note import Note, NoteCreate, NoteType
-from services.base import BaseService
-from services.pdf_processor import PDFProcessor
-from services.embedding_generator import EmbeddingGenerator
-from services.semantic_search import SemanticSearchService
+from src.models.content_source import ContentSource, ContentSourceCreate
+from src.models.processing_result import ProcessingResult, ProcessingResultCreate
+from src.models.pdf_metadata import PDFMetadata, PDFMetadataCreate
+from src.models.pdf_processing_result import PDFProcessingResult, PDFProcessingResultCreate
+from src.models.review_queue import ReviewQueue, ReviewQueueCreate, ReviewStatus
+from src.models.audit_trail import AuditTrail, AuditTrailCreate
+from src.models.note import Note, NoteCreate, NoteType
+from src.services.base import BaseService
+from src.services.pdf_processor import PDFProcessor
+from src.services.embedding_generator import EmbeddingGenerator
+from src.services.semantic_search import SemanticSearchService
+from src.services.database import DatabaseService
+from src.services.vector_store import VectorStore
+from src.services.hnsw_index import HNSWIndex
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +37,19 @@ class IngestionService:
     
     def __init__(self, database_url: str):
         self.database_url = database_url
+        self.database_service = DatabaseService()
         self.pdf_processor = PDFProcessor()
-        self.embedding_generator = EmbeddingGenerator()
-        self.semantic_search = SemanticSearchService(database_url)
+        self.embedding_generator = EmbeddingGenerator(self.database_service)
+        
+        # Initialize semantic search dependencies
+        self.vector_store = VectorStore(database_url)
+        self.hnsw_index = HNSWIndex(database_url)
+        self.semantic_search = SemanticSearchService(
+            self.embedding_generator,
+            self.vector_store,
+            self.hnsw_index,
+            self.database_service
+        )
         
         # Initialize database services
         self.ingestion_task_service = BaseService(IngestionTask)

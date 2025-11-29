@@ -10,7 +10,7 @@ import asyncio
 from datetime import datetime
 import uuid
 
-from src.config.database import get_database_config
+from src.config.database import db_config
 from src.models.embedding import Embedding
 from src.services.database import DatabaseService
 

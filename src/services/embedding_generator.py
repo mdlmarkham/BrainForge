@@ -25,7 +25,7 @@ except ImportError:
     APIConnectionError = Exception
     APITimeoutError = Exception
 
-from src.config.database import get_database_config
+from src.config.database import db_config
 from src.models.embedding import Embedding, EmbeddingCreate
 from src.services.database import DatabaseService
 

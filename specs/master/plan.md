@@ -1,42 +1,48 @@
-# Implementation Plan: PDF Processing for Ingestion Curation
+# Implementation Plan: Researcher Agent
 
-**Branch**: `002-ingestion-curation` | **Date**: 2025-11-29 | **Spec**: `/specs/002-ingestion-curation/spec.md`
-**Input**: Feature specification from `/specs/002-ingestion-curation/spec.md`
+**Branch**: `003-researcher-agent` | **Date**: 2025-11-29 | **Spec**: `/specs/003-researcher-agent/spec.md`
+**Input**: Feature specification from `/specs/003-researcher-agent/spec.md`
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/commands/plan.md` for the execution workflow.
 
 ## Summary
 
-Add PDF processing capability to the ingestion curation pipeline using dockling for text extraction, enabling automated ingestion of PDF documents with summarization, classification, and integration into the knowledge graph.
+AI assistant that discovers, evaluates, and proposes external content for knowledge base integration with human review workflow. Built on existing BrainForge infrastructure with Python 3.11+, FastAPI, PostgreSQL/PGVector, and PydanticAI integration.
 
 ## Technical Context
 
+<!--
+  ACTION REQUIRED: Replace the content in this section with the technical details
+  for the project. The structure here is presented in advisory capacity to guide
+  the iteration process.
+-->
+
 **Language/Version**: Python 3.11+ (constitution requirement)
-**Primary Dependencies**: FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, dockling (PDF processing)
+**Primary Dependencies**: FastAPI, PostgreSQL/PGVector, PydanticAI, SQLAlchemy, FastMCP, SpiffWorkflow
 **Storage**: PostgreSQL with PGVector extension for semantic indexing
-**Testing**: pytest with contract testing for PDF processing interfaces
+**Testing**: pytest with contract testing for AI agent interfaces
 **Target Platform**: Linux server (containerized deployment)
-**Project Type**: single project (API service)
-**Performance Goals**: Process PDF documents within 2 minutes for typical academic papers (20-30 pages)
-**Constraints**: Maintain backward compatibility with existing ingestion pipeline, support PDFs up to 100MB
-**Scale/Scope**: Handle dozens of PDFs per month for personal knowledge management use cases
+**Project Type**: single (backend API with AI agent integration)
+**Performance Goals**: Research runs complete within 30 minutes for typical topic scopes
+**Constraints**: Must maintain constitutional compliance with human review gates, complete audit trails
+**Scale/Scope**: Personal knowledge management system with AI agent orchestration
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Structured Data Foundation**: ✅ PDF processing will extend existing ingestion data models with PDF-specific metadata
-**AI Agent Integration**: ✅ PDF processing will use dockling with clear input/output contracts and audit trails
-**Versioning & Auditability**: ✅ PDF ingestion will maintain complete version history and rollback capabilities
-**Test-First Development**: ✅ PDF processing will have comprehensive test coverage before integration
-**Progressive Enhancement**: ✅ PDF processing will be optional enhancement to existing ingestion pipeline
-**Roles & Permissions**: ✅ PDF ingestion will follow existing user/agent roles and approval workflows
-**Data Governance**: ✅ PDF processing will include source validation and license compliance checks
-**Error Handling**: ✅ PDF processing will implement retry logic and graceful failure handling
-**AI Versioning**: ✅ dockling integration will use versioned interfaces with behavior verification
-**Human-in-the-Loop**: ✅ PDF processing results will require human review before final integration
+**Structured Data Foundation**: ✅ Data models exist for core entities; researcher agent will extend with ResearchRun, ContentSource, QualityAssessment, ReviewQueue models
+**AI Agent Integration**: ✅ Planned with PydanticAI integration, audit trails via existing models
+**Versioning & Auditability**: ✅ Existing version_history model provides foundation; researcher agent will extend with research-specific audit trails
+**Test-First Development**: ✅ pytest framework established; contract testing required for agent interfaces
+**Progressive Enhancement**: ✅ Core knowledge base functions without AI; researcher agent is additive capability
+**Roles & Permissions**: ✅ Existing role definitions; researcher agent requires Owner/Reviewer approval workflows
+**Data Governance**: ✅ External content validation planned with source metadata and license tracking
+**Error Handling**: ✅ Existing error handling patterns; researcher agent requires retry logic for external API calls
+**AI Versioning**: ✅ Agent version tracking planned with behavior verification tests
+**Human-in-the-Loop**: ✅ Review cycles and explainability standards integrated into workflow design
 
-*All constitutional gates passed - feature design is compliant*
+*Failure to pass any gate requires constitutional amendment or feature redesign*
 
 ## Project Structure
 
@@ -53,73 +59,81 @@ specs/[###-feature]/
 ```
 
 ### Source Code (repository root)
+<!--
+  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
+  for this feature. Delete unused options and expand the chosen structure with
+  real paths (e.g., apps/admin, packages/something). The delivered plan must
+  not include Option labels.
+-->
 
 ```text
+# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
 src/
-├── models/                          # Existing data models
-│   ├── ingestion.py                 # NEW: PDF ingestion models
-│   └── pdf_metadata.py              # NEW: PDF-specific metadata
+├── models/
 ├── services/
-│   ├── pdf_processor.py             # NEW: PDF processing service with dockling
-│   └── ingestion.py                 # Extend existing ingestion service
-├── api/routes/
-│   └── ingestion.py                 # Extend existing ingestion routes
-└── cli/
-    └── pdf_ingest.py                # NEW: CLI for PDF ingestion
+├── cli/
+└── lib/
 
 tests/
 ├── contract/
-│   └── test_pdf_processing.py       # NEW: PDF processing contract tests
 ├── integration/
-│   └── test_pdf_ingestion.py        # NEW: PDF ingestion integration tests
 └── unit/
-    └── test_pdf_processor.py        # NEW: PDF processor unit tests
+
+# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+backend/
+├── src/
+│   ├── models/
+│   ├── services/
+│   └── api/
+└── tests/
+
+frontend/
+├── src/
+│   ├── components/
+│   ├── pages/
+│   └── services/
+└── tests/
+
+# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
+api/
+└── [same as backend above]
+
+ios/ or android/
+└── [platform-specific structure: feature modules, UI flows, platform tests]
 ```
 
-**Structure Decision**: Single project structure selected as this extends existing ingestion pipeline. New PDF-specific modules will be added to existing directories while maintaining separation of concerns.
+**Structure Decision**: Single project structure selected as this extends the existing BrainForge backend. The researcher agent will integrate with existing models, services, and API routes while adding new agent-specific components.
 
-## Phase 0: Research Complete
+## Post-Design Constitution Check
 
-**Status**: All research tasks completed and documented in `research.md`
+*Re-evaluated after Phase 1 design completion*
 
-**Key Decisions**:
-- Use dockling for PDF text extraction and metadata collection
-- Extend existing ingestion architecture with PDF-specific services
-- Maintain backward compatibility with current ingestion pipeline
-- Implement comprehensive error handling and retry logic
+**Structured Data Foundation**: ✅ All data models defined with clear schemas and relationships. ResearchRun, ContentSource, QualityAssessment, ReviewQueue, IntegrationProposal models provide comprehensive coverage.
 
-## Phase 1: Design Complete
+**AI Agent Integration**: ✅ PydanticAI integration planned with structured input/output contracts. Audit trails implemented through research_audit_trail table.
 
-**Status**: Design artifacts generated and ready for implementation
+**Versioning & Auditability**: ✅ Complete version tracking through audit trails. Research-specific audit table extends existing version_history infrastructure.
 
-**Generated Artifacts**:
-- `data-model.md`: Extended data models for PDF processing
-- `contracts/openapi.yaml`: API specifications for PDF ingestion endpoints
-- `quickstart.md`: Implementation guide with code examples
+**Test-First Development**: ✅ Contract testing planned for all API endpoints. Data model validation through database constraints.
 
-**Constitution Check Re-evaluation**:
+**Progressive Enhancement**: ✅ Core knowledge base remains functional. Researcher agent is additive capability with configurable quality thresholds.
 
-**Structured Data Foundation**: ✅ PDFMetadata model extends existing ingestion data structure
-**AI Agent Integration**: ✅ dockling integration with clear contracts and audit trails
-**Versioning & Auditability**: ✅ Complete version history for PDF processing activities
-**Test-First Development**: ✅ Comprehensive test plan included in quickstart
-**Progressive Enhancement**: ✅ PDF processing optional enhancement to existing pipeline
-**Roles & Permissions**: ✅ Follows existing user/agent role definitions
-**Data Governance**: ✅ PDF validation and security checks implemented
-**Error Handling**: ✅ Retry logic and graceful failure handling designed
-**AI Versioning**: ✅ dockling version tracking included
-**Human-in-the-Loop**: ✅ Review workflow maintained for PDF content
+**Roles & Permissions**: ✅ Review workflow includes Owner/Reviewer roles. Assignment and decision tracking implemented.
 
-*All constitutional requirements maintained - design approved*
+**Data Governance**: ✅ External content validation with source metadata, license tracking, and quality scoring.
 
-## Next Steps
+**Error Handling**: ✅ Robust error handling with retry logic for external APIs. Circuit breaker pattern for resilience.
 
-Proceed to implementation phase using the generated artifacts:
-1. Implement data models from `data-model.md`
-2. Build services following `quickstart.md` examples
-3. Implement API endpoints from `contracts/openapi.yaml`
-4. Run comprehensive testing before deployment
+**AI Versioning**: ✅ Agent version tracking implemented in audit trails. Behavior verification through quality assessment scoring.
 
-**Branch**: `002-ingestion-curation`
-**IMPL_PLAN Path**: `specs/master/plan.md`
-**Generated Artifacts**: `research.md`, `data-model.md`, `contracts/openapi.yaml`, `quickstart.md`
+**Human-in-the-Loop**: ✅ Three-stage review process with human approval required for final integration.
+
+## Complexity Tracking
+
+> **No constitutional violations identified - design maintains full compliance**
+
+| Justification | Design Decision | Constitutional Alignment |
+|---------------|-----------------|--------------------------|
+| Multiple external API integrations | Required for comprehensive content discovery | Progressive enhancement ensures core functionality without dependencies |
+| Complex quality scoring system | Necessary for nuanced content evaluation | Structured data foundation provides clear scoring schema |
+| Three-stage review workflow | Balances automation efficiency with human oversight | Maintains constitutional human-in-the-loop requirement |

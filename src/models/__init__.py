@@ -20,6 +20,12 @@ from .pdf_metadata import PDFMetadata, PDFMetadataCreate, PDFMetadataUpdate
 from .pdf_processing_result import PDFProcessingResult, PDFProcessingResultCreate, PDFProcessingResultUpdate
 from .review_queue import ReviewQueue, ReviewQueueCreate, ReviewQueueUpdate, ReviewStatus
 from .audit_trail import AuditTrail, AuditTrailCreate, AuditTrailUpdate
+from .research_run import ResearchRun, ResearchRunCreate, ResearchRunUpdate, ResearchRunStatus
+from .content_source import ContentSource, ContentSourceCreate, ContentSourceUpdate, ContentSourceType
+from .quality_assessment import QualityAssessment, QualityAssessmentCreate, QualityAssessmentUpdate, QualityScoreType
+from .research_review_queue import ResearchReviewQueue, ResearchReviewQueueCreate, ResearchReviewQueueUpdate
+from .integration_proposal import IntegrationProposal, IntegrationProposalCreate, IntegrationProposalUpdate, IntegrationProposalStatus
+from .research_audit_trail import ResearchAuditTrail, ResearchAuditTrailCreate, ResearchAuditTrailUpdate, AuditActionType
 
 __all__ = [
     "BaseEntity",
@@ -66,5 +72,28 @@ __all__ = [
     "ReviewStatus",
     "AuditTrail",
     "AuditTrailCreate",
-    "AuditTrailUpdate"
+    "AuditTrailUpdate",
+    "ResearchRun",
+    "ResearchRunCreate",
+    "ResearchRunUpdate",
+    "ResearchRunStatus",
+    "ContentSource",
+    "ContentSourceCreate",
+    "ContentSourceUpdate",
+    "ContentSourceType",
+    "QualityAssessment",
+    "QualityAssessmentCreate",
+    "QualityAssessmentUpdate",
+    "QualityScoreType",
+    "ResearchReviewQueue",
+    "ResearchReviewQueueCreate",
+    "ResearchReviewQueueUpdate",
+    "IntegrationProposal",
+    "IntegrationProposalCreate",
+    "IntegrationProposalUpdate",
+    "IntegrationProposalStatus",
+    "ResearchAuditTrail",
+    "ResearchAuditTrailCreate",
+    "ResearchAuditTrailUpdate",
+    "AuditActionType"
 ]

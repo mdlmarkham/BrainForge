@@ -10,7 +10,7 @@ from typing import List, Optional, Dict, Any, Tuple
 import asyncio
 from datetime import datetime
 
-from src.config.database import get_database_config
+from src.config.database import db_config
 from src.models.embedding import Embedding
 from src.services.database import DatabaseService
 

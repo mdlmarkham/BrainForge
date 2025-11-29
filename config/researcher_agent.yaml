@@ -1,0 +1,313 @@
+# Researcher Agent Configuration
+# Configuration file for the researcher agent with quality thresholds and optimization settings
+
+# Research Run Configuration
+research_run:
+  # Default search parameters
+  default_search_limit: 20
+  max_search_results: 100
+  search_timeout_seconds: 30
+  
+  # Content discovery settings
+  content_discovery:
+    enabled_sources:
+      - "google_search"
+      - "semantic_scholar"
+      - "news_api"
+    fallback_order: ["google_search", "semantic_scholar", "news_api"]
+    concurrent_discovery: true
+    max_concurrent_requests: 3
+
+# Quality Assessment Configuration
+quality_assessment:
+  # Quality scoring thresholds
+  thresholds:
+    high_quality: 0.8
+    medium_quality: 0.5
+    low_quality: 0.3
+    rejection_threshold: 0.2
+  
+  # Scoring weights
+  weights:
+    credibility: 0.35
+    relevance: 0.25
+    freshness: 0.20
+    completeness: 0.20
+  
+  # AI integration settings
+  ai_integration:
+    enabled: true
+    model: "gpt-4"  # or "gpt-3.5-turbo" for cost optimization
+    max_tokens: 1000
+    temperature: 0.7
+  
+  # Fallback settings
+  fallback_to_basic_scoring: true
+  basic_scoring_timeout_seconds: 10
+
+# Integration Proposal Configuration
+integration_proposal:
+  # Connection suggestion settings
+  connection_suggestions:
+    max_suggestions: 10
+    similarity_threshold: 0.4
+    strength_threshold: 0.6
+  
+  # Tag suggestion settings
+  tag_suggestions:
+    max_tags: 15
+    confidence_threshold: 0.3
+    include_hierarchical_tags: true
+  
+  # Integration strategy thresholds
+  strategy_thresholds:
+    deep_integration: 0.8
+    standard_integration: 0.6
+    basic_integration: 0.4
+  
+  # Effort estimation
+  effort_estimation:
+    low_effort_threshold: 3
+    medium_effort_threshold: 6
+    high_effort_threshold: 10
+
+# Review Workflow Configuration
+review_workflow:
+  # Review queue settings
+  queue_management:
+    auto_create_review_queues: true
+    quality_threshold_for_review: 0.5  # Only create review queues for content above this quality
+    max_pending_reviews: 50
+  
+  # Review decision settings
+  decision_guidelines:
+    auto_approve_threshold: 0.9
+    auto_reject_threshold: 0.2
+    human_review_range: [0.2, 0.9]
+  
+  # Reviewer assignment
+  reviewer_assignment:
+    round_robin: true
+    priority_based: true
+    max_assigned_per_reviewer: 10
+
+# External API Configuration
+external_apis:
+  # Circuit breaker settings
+  circuit_breakers:
+    google_search:
+      failure_threshold: 3
+      success_threshold: 2
+      timeout_seconds: 30
+      reset_timeout_seconds: 180
+    
+    semantic_scholar:
+      failure_threshold: 5
+      success_threshold: 3
+      timeout_seconds: 60
+      reset_timeout_seconds: 300
+    
+    news_api:
+      failure_threshold: 4
+      success_threshold: 2
+      timeout_seconds: 45
+      reset_timeout_seconds: 240
+    
+    ai_service:
+      failure_threshold: 2
+      success_threshold: 1
+      timeout_seconds: 90
+      reset_timeout_seconds: 360
+  
+  # Retry configuration
+  retry_settings:
+    max_retries: 3
+    base_delay_seconds: 1.0
+    exponential_backoff: true
+    jitter: true
+  
+  # Rate limiting
+  rate_limiting:
+    google_search:
+      requests_per_minute: 60
+      burst_limit: 10
+    
+    semantic_scholar:
+      requests_per_minute: 100
+      burst_limit: 20
+    
+    news_api:
+      requests_per_minute: 50
+      burst_limit: 5
+
+# Performance Optimization
+performance:
+  # Database optimization
+  database:
+    connection_pool_size: 20
+    max_overflow: 10
+    pool_timeout: 30
+    pool_recycle: 3600
+  
+  # Caching settings
+  caching:
+    enabled: true
+    default_ttl_seconds: 300
+    max_cache_size: 1000
+    
+    # Specific cache TTLs
+    ttl_overrides:
+      content_sources: 600
+      quality_assessments: 900
+      integration_proposals: 1200
+  
+  # Batch processing
+  batch_processing:
+    enabled: true
+    batch_size: 10
+    max_concurrent_batches: 3
+  
+  # Memory management
+  memory_management:
+    max_content_size_bytes: 10485760  # 10MB
+    chunk_processing: true
+    chunk_size: 5000
+
+# Monitoring and Logging
+monitoring:
+  # Audit logging
+  audit:
+    enabled: true
+    log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    max_audit_entries: 10000
+    retention_days: 30
+  
+  # Performance metrics
+  metrics:
+    enabled: true
+    collection_interval_seconds: 60
+    retention_days: 7
+    
+    # Metrics to track
+    tracked_metrics:
+      - "research_duration"
+      - "content_discovery_duration"
+      - "quality_assessment_duration"
+      - "integration_proposal_duration"
+      - "content_sources_discovered"
+      - "quality_assessments_completed"
+      - "integration_proposals_generated"
+      - "research_success_rate"
+      - "average_quality_score"
+      - "error_rate"
+  
+  # Alerting thresholds
+  alerts:
+    enabled: true
+    thresholds:
+      error_rate: 10.0  # Percentage
+      average_duration_seconds: 300
+      success_rate: 80.0  # Percentage
+
+# Security and Compliance
+security:
+  # API key management
+  api_keys:
+    encryption_enabled: true
+    rotation_days: 90
+    max_key_age: 365
+  
+  # Data privacy
+  data_privacy:
+    anonymize_user_data: true
+    retention_policy:
+      research_runs: 365  # days
+      content_sources: 730
+      audit_trails: 180
+  
+  # Compliance settings
+  compliance:
+    gdpr_compliant: true
+    data_minimization: true
+    purpose_limitation: true
+
+# Feature Flags
+features:
+  # Experimental features
+  experimental:
+    advanced_semantic_analysis: false
+    cross_domain_connections: false
+    hierarchical_tagging: true
+    temporal_analysis: false
+  
+  # Optimization features
+  optimizations:
+    parallel_processing: true
+    predictive_caching: false
+    adaptive_quality_thresholds: true
+  
+  # Integration features
+  integrations:
+    obsidian_sync: true
+    workflow_automation: true
+    notification_system: false
+
+# Environment-specific overrides
+environments:
+  development:
+    research_run:
+      default_search_limit: 5
+      max_search_results: 20
+    
+    external_apis:
+      circuit_breakers:
+        google_search:
+          failure_threshold: 1
+          timeout_seconds: 10
+    
+    monitoring:
+      audit:
+        log_level: "DEBUG"
+  
+  production:
+    performance:
+      database:
+        connection_pool_size: 50
+        max_overflow: 20
+    
+    external_apis:
+      rate_limiting:
+        google_search:
+          requests_per_minute: 100
+          burst_limit: 20
+    
+    security:
+      api_keys:
+        rotation_days: 30
+  
+  testing:
+    research_run:
+      default_search_limit: 2
+      max_search_results: 5
+    
+    external_apis:
+      circuit_breakers:
+        google_search:
+          failure_threshold: 1
+          success_threshold: 1
+        
+        semantic_scholar:
+          failure_threshold: 1
+          success_threshold: 1
+        
+        news_api:
+          failure_threshold: 1
+          success_threshold: 1
+        
+        ai_service:
+          failure_threshold: 1
+          success_threshold: 1
+    
+    monitoring:
+      audit:
+        max_audit_entries: 1000

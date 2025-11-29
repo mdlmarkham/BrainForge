@@ -112,3 +112,14 @@ class VersionHistoryService(BaseService[VersionHistory]):
         )
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
+
+
+class DatabaseService:
+    """Main database service that provides access to all entity services."""
+    
+    def __init__(self):
+        self.note_service = NoteService()
+        self.link_service = LinkService()
+        self.embedding_service = EmbeddingService()
+        self.agent_run_service = AgentRunService()
+        self.version_history_service = VersionHistoryService()

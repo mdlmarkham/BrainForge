@@ -1,48 +1,59 @@
-"""Content source model for BrainForge ingestion pipeline."""
+"""Content Source model for external content discovered by researcher agent."""
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Optional
 from uuid import UUID
 
-from pydantic import ConfigDict, Field
+from pydantic import Field
 
-from .base import BaseEntity, TimestampMixin
-
-
-class ContentSourceBase(TimestampMixin):
-    """Base content source model with constitutional compliance fields."""
-
-    ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
-    source_type: str = Field(..., description="Type of source (web, video, pdf, etc.)")
-    source_url: Optional[str] = Field(None, description="Original source URL")
-    source_metadata: Dict[str, Any] = Field(
-        default_factory=dict, 
-        description="Source-specific metadata and retrieval information"
-    )
-    retrieval_method: str = Field(..., description="Method used to retrieve content")
-    retrieval_timestamp: datetime = Field(..., description="When content was retrieved")
-    content_hash: str = Field(..., description="Hash of original content for deduplication")
-
-    def model_post_init(self, __context: Any) -> None:
-        """Post-initialization validation."""
-        # Ensure retrieval timestamp is set if not provided
-        if not self.retrieval_timestamp:
-            self.retrieval_timestamp = datetime.now()
+from .base import BaseEntity
 
 
-class ContentSourceCreate(ContentSourceBase):
-    """Model for creating new content sources."""
-
-    pass
-
-
-class ContentSourceUpdate(ContentSourceBase):
-    """Model for updating existing content sources."""
-
-    pass
+class ContentSourceType:
+    """Content source type constants."""
+    WEB_ARTICLE = "web_article"
+    ACADEMIC_PAPER = "academic_paper"
+    NEWS_REPORT = "news_report"
+    BLOG_POST = "blog_post"
+    TECHNICAL_DOCUMENT = "technical_document"
 
 
-class ContentSource(ContentSourceBase, BaseEntity):
-    """Complete content source model with all constitutional compliance fields."""
+class ContentSource(BaseEntity):
+    """Represents external content discovered by the researcher agent."""
+    
+    research_run_id: UUID = Field(..., description="ID of the research run that discovered this source")
+    source_type: str = Field(..., description="Type of content source")
+    source_url: str = Field(..., description="URL or identifier of the source")
+    source_title: str = Field(..., description="Title of the content")
+    source_metadata: dict[str, str] = Field(default_factory=dict, description="Metadata about the source")
+    retrieval_method: str = Field(..., description="Method used to retrieve the content")
+    retrieval_timestamp: datetime = Field(..., description="When the content was retrieved")
+    content_hash: str = Field(..., description="Hash of the content for deduplication")
+    raw_content: Optional[str] = Field(default=None, description="Raw content text")
+    is_duplicate: bool = Field(default=False, description="Whether this is a duplicate of another source")
+    duplicate_of: Optional[UUID] = Field(default=None, description="ID of the original source if duplicate")
 
-    model_config = ConfigDict(from_attributes=True)
+
+class ContentSourceCreate(BaseEntity):
+    """Create schema for content sources."""
+    
+    research_run_id: UUID = Field(..., description="ID of the research run that discovered this source")
+    source_type: str = Field(..., description="Type of content source")
+    source_url: str = Field(..., description="URL or identifier of the source")
+    source_title: str = Field(..., description="Title of the content")
+    source_metadata: dict[str, str] = Field(default_factory=dict, description="Metadata about the source")
+    retrieval_method: str = Field(..., description="Method used to retrieve the content")
+    retrieval_timestamp: datetime = Field(..., description="When the content was retrieved")
+    content_hash: str = Field(..., description="Hash of the content for deduplication")
+    raw_content: Optional[str] = Field(default=None, description="Raw content text")
+
+
+class ContentSourceUpdate(BaseEntity):
+    """Update schema for content sources."""
+    
+    source_type: Optional[str] = Field(default=None, description="Type of content source")
+    source_title: Optional[str] = Field(default=None, description="Title of the content")
+    source_metadata: Optional[dict[str, str]] = Field(default=None, description="Metadata about the source")
+    raw_content: Optional[str] = Field(default=None, description="Raw content text")
+    is_duplicate: Optional[bool] = Field(default=None, description="Whether this is a duplicate of another source")
+    duplicate_of: Optional[UUID] = Field(default=None, description="ID of the original source if duplicate")

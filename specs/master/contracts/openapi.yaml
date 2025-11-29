@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
-  title: BrainForge PDF Processing API
-  description: API endpoints for PDF ingestion and processing with dockling integration
+  title: BrainForge Researcher Agent API
+  description: API for AI-powered content discovery and evaluation with human review workflow
   version: 1.0.0
   contact:
     name: BrainForge Development Team
@@ -12,292 +12,552 @@ servers:
     description: Development server
 
 paths:
-  /ingestion/pdf:
-    post:
-      summary: Submit PDF for ingestion
-      description: Upload a PDF document for processing and integration into knowledge base
+  /research/runs:
+    get:
+      summary: List research runs
+      description: Retrieve paginated list of research runs with filtering options
       tags:
-        - PDF Ingestion
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: PDF file to process
-                source_url:
-                  type: string
-                  description: Original source URL (optional)
-                tags:
-                  type: array
-                  items:
-                    type: string
-                  description: Initial tags for classification
-                priority:
-                  type: string
-                  enum: [low, normal, high]
-                  default: normal
-                  description: Processing priority
+        - Research
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, running, completed, failed]
+          description: Filter by run status
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number for pagination
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Number of items per page
       responses:
-        '202':
-          description: PDF accepted for processing
+        '200':
+          description: Successful response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  task_id:
-                    type: string
-                    format: uuid
-                    description: Unique identifier for processing task
-                  status:
-                    type: string
-                    enum: [accepted, validating]
-                    description: Initial processing status
-                  estimated_completion:
-                    type: string
-                    format: date-time
-                    description: Estimated completion time
+                  runs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ResearchRun'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
         '400':
-          description: Invalid PDF file or parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '413':
-          description: PDF file too large (>100MB)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
-  /ingestion/pdf/{task_id}:
-    get:
-      summary: Get PDF processing status
-      description: Retrieve current status and results of PDF processing task
-      tags:
-        - PDF Ingestion
-      parameters:
-        - name: task_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Processing task identifier
-      responses:
-        '200':
-          description: Processing status and results
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PDFProcessingStatus'
-        '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /ingestion/pdf/{task_id}/retry:
     post:
-      summary: Retry failed PDF processing
-      description: Retry processing for a failed PDF ingestion task
+      summary: Create research run
+      description: Initiate a new research run with specified topic and parameters
       tags:
-        - PDF Ingestion
-      parameters:
-        - name: task_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Processing task identifier
+        - Research
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                extraction_method:
-                  type: string
-                  enum: [dockling_basic, dockling_advanced]
-                  description: Specific extraction method to use
+              $ref: '#/components/schemas/CreateResearchRunRequest'
+      responses:
+        '201':
+          description: Research run created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResearchRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /research/runs/{run_id}:
+    get:
+      summary: Get research run details
+      description: Retrieve detailed information about a specific research run
+      tags:
+        - Research
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
-          description: Retry initiated successfully
+          description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PDFProcessingStatus'
+                $ref: '#/components/schemas/ResearchRunDetails'
         '404':
-          description: Task not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Task not in failed state
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
-  /ingestion/pdf/batch:
-    post:
-      summary: Submit multiple PDFs for batch processing
-      description: Upload multiple PDF documents for batch processing
+  /research/runs/{run_id}/sources:
+    get:
+      summary: List content sources from research run
+      description: Retrieve discovered content sources with their quality assessments
       tags:
-        - PDF Ingestion
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                files:
-                  type: array
-                  items:
-                    type: string
-                    format: binary
-                  description: PDF files to process
-                batch_name:
-                  type: string
-                  description: Name for batch processing group
+        - Research
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: min_score
+          in: query
+          schema:
+            type: number
+            minimum: 0.0
+            maximum: 1.0
+          description: Filter by minimum quality score
+        - name: content_type
+          in: query
+          schema:
+            type: string
+            enum: [article, paper, report, blog, news]
+          description: Filter by content type
       responses:
-        '202':
-          description: Batch processing accepted
+        '200':
+          description: Successful response
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  batch_id:
-                    type: string
-                    format: uuid
-                    description: Batch processing identifier
-                  task_count:
-                    type: integer
-                    description: Number of PDFs accepted
-                  estimated_completion:
-                    type: string
-                    format: date-time
-                    description: Estimated completion time
+                  sources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContentSourceWithAssessment'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /review/queue:
+    get:
+      summary: Get review queue
+      description: Retrieve items awaiting human review with pagination
+      tags:
+        - Review
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, approved, rejected, modified]
+          description: Filter by review status
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [high, medium, low]
+          description: Filter by priority
+        - name: assigned_to
+          in: query
+          schema:
+            type: string
+          description: Filter by assigned reviewer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReviewQueueItem'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /review/queue/{item_id}:
+    patch:
+      summary: Update review decision
+      description: Submit human review decision for a content source
+      tags:
+        - Review
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewDecisionRequest'
+      responses:
+        '200':
+          description: Review decision updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewQueueItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /integration/proposals:
+    get:
+      summary: Get integration proposals
+      description: Retrieve AI-generated integration suggestions for approved content
+      tags:
+        - Integration
+      parameters:
+        - name: content_source_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by specific content source
+        - name: min_strength
+          in: query
+          schema:
+            type: number
+            minimum: 0.0
+          description: Filter by minimum connection strength
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proposals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IntegrationProposal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
 
 components:
   schemas:
-    PDFProcessingStatus:
+    ResearchRun:
       type: object
       properties:
-        task_id:
+        id:
           type: string
           format: uuid
-          description: Processing task identifier
+        topic:
+          type: string
         status:
           type: string
-          enum: [validating, extracting_metadata, extracting_text, assessing_quality, summarizing, classifying, awaiting_review, integrated, failed]
-          description: Current processing status
-        progress:
-          type: integer
-          minimum: 0
-          maximum: 100
-          description: Processing progress percentage
-        pdf_metadata:
-          $ref: '#/components/schemas/PDFMetadata'
-        extracted_text_preview:
+          enum: [pending, running, completed, failed]
+        started_at:
           type: string
-          description: First 500 characters of extracted text
-        quality_score:
-          type: number
-          format: float
-          minimum: 0.0
-          maximum: 1.0
-          description: Text extraction quality score
-        estimated_remaining_time:
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        results_count:
           type: integer
-          description: Estimated remaining processing time in seconds
-        errors:
-          type: array
-          items:
-            type: string
-          description: Processing errors encountered
+        quality_threshold:
+          type: number
+        created_by:
+          type: string
         created_at:
           type: string
           format: date-time
-        updated_at:
-          type: string
-          format: date-time
+      required:
+        - id
+        - topic
+        - status
+        - created_by
+        - created_at
 
-    PDFMetadata:
+    CreateResearchRunRequest:
       type: object
       properties:
-        page_count:
-          type: integer
-          description: Number of pages in PDF
-        author:
+        topic:
           type: string
-          nullable: true
-          description: Document author
+          minLength: 1
+          maxLength: 500
+        parameters:
+          type: object
+          properties:
+            sources:
+              type: array
+              items:
+                type: string
+                enum: [web, academic, news]
+            max_results:
+              type: integer
+              minimum: 1
+              maximum: 100
+            quality_threshold:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+              default: 0.5
+          required:
+            - topic
+
+    ResearchRunDetails:
+      allOf:
+        - $ref: '#/components/schemas/ResearchRun'
+        - type: object
+          properties:
+            sources_count:
+              type: integer
+            high_quality_count:
+              type: integer
+            average_score:
+              type: number
+            audit_trail:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditTrailEntry'
+
+    ContentSourceWithAssessment:
+      type: object
+      properties:
+        content_source:
+          $ref: '#/components/schemas/ContentSource'
+        quality_assessment:
+          $ref: '#/components/schemas/QualityAssessment'
+        integration_proposals:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationProposal'
+
+    ContentSource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        source_url:
+          type: string
         title:
           type: string
-          nullable: true
-          description: Document title
-        subject:
+        authors:
+          type: array
+          items:
+            type: string
+        publication:
           type: string
-          nullable: true
-          description: Document subject
-        creation_date:
+        publication_date:
+          type: string
+          format: date
+        content_type:
+          type: string
+          enum: [article, paper, report, blog, news]
+        summary:
+          type: string
+        key_points:
+          type: array
+          items:
+            type: string
+        discovered_at:
           type: string
           format: date-time
-          nullable: true
-          description: PDF creation date
-        modification_date:
-          type: string
-          format: date-time
-          nullable: true
-          description: PDF modification date
-        pdf_version:
-          type: string
-          description: PDF version
-        encryption_status:
-          type: string
-          enum: [none, password, certificate]
-          description: Encryption status
-        extraction_method:
-          type: string
-          description: Text extraction method used
-        extraction_quality_score:
-          type: number
-          format: float
-          description: Quality score of text extraction
 
-    ErrorResponse:
+    QualityAssessment:
       type: object
       properties:
-        error:
+        credibility_score:
+          type: number
+        relevance_score:
+          type: number
+        freshness_score:
+          type: number
+        completeness_score:
+          type: number
+        overall_score:
+          type: number
+        confidence_level:
           type: string
-          description: Error message
-        code:
+          enum: [high, medium, low]
+        evaluation_rationale:
           type: string
-          description: Error code
-        details:
-          type: object
-          description: Additional error details
-        timestamp:
+        red_flags:
+          type: array
+          items:
+            type: string
+        evaluated_at:
           type: string
           format: date-time
-          description: When the error occurred
 
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+    ReviewQueueItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        content_source:
+          $ref: '#/components/schemas/ContentSource'
+        quality_assessment:
+          $ref: '#/components/schemas/QualityAssessment'
+        status:
+          type: string
+          enum: [pending, approved, rejected, modified]
+        priority:
+          type: string
+          enum: [high, medium, low]
+        assigned_to:
+          type: string
+        submitted_at:
+          type: string
+          format: date-time
 
-security:
-  - bearerAuth: []
+    ReviewDecisionRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject, modify]
+        notes:
+          type: string
+        modifications:
+          type: object
+          properties:
+            summary:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+            connections:
+              type: array
+              items:
+                type: string
+                format: uuid
+      required:
+        - decision
+
+    IntegrationProposal:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        target_note_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        suggested_tags:
+          type: array
+          items:
+            type: string
+        connection_strength:
+          type: number
+        integration_rationale:
+          type: string
+        suggested_actions:
+          type: array
+          items:
+            type: string
+            enum: [create_note, enhance_existing, link_reference]
+
+    AuditTrailEntry:
+      type: object
+      properties:
+        action_type:
+          type: string
+          enum: [discovery, evaluation, review, integration]
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+          format: uuid
+        action_details:
+          type: object
+        performed_by:
+          type: string
+        performed_at:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        pages:
+          type: integer
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: object
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              resource:
+                type: string
+
+    ValidationError:
+      description: Validation error - invalid request body
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              field_errors:
+                type: object
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              request_id:
+                type: string
