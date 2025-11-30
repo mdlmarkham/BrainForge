@@ -1,0 +1,68 @@
+<![CDATA[<examples>
+  <example name="complete_model_creation">
+    <description>Complete workflow for creating a new BrainForge model with constitutional compliance</description>
+    <context>When adding a new entity to the BrainForge system that requires database storage and API exposure</context>
+    <workflow>
+      <step number="1">
+        <action>Research existing patterns</action>
+        <code><![CDATA[
+# Use codebase_search to find similar model implementations
+<codebase_search>
+<query>BrainForge model patterns with constitutional compliance</query>
+</codebase_search>
+        ]]></code>
+      </step>
+      <step number="2">
+        <action>Examine base patterns</action>
+        <code><![CDATA[
+# Read the base model file to understand required patterns
+<read_file>
+<path>src/models/base.py</path>
+</read_file>
+        ]]></code>
+      </step>
+      <step number="3">
+        <action>Create the model file</action>
+        <code><![CDATA[
+<write_to_file>
+<path>src/models/research_topic.py</path>
+<content><![CDATA[
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
+
+from pydantic import BaseModel, Field
+
+from src.models.base import BrainForgeBaseModel, TimestampMixin, ProvenanceMixin
+
+
+class ResearchTopicCreate(BrainForgeBaseModel):
+    """Creation model for ResearchTopic."""
+    
+    title: str = Field(..., min_length=1, max_length=255, description="Research topic title")
+    description: Optional[str] = Field(None, max_length=1000, description="Topic description")
+    tags: List[str] = Field(default_factory=list, description="Topic tags")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+
+
+class ResearchTopicUpdate(BrainForgeBaseModel):
+    """Update model for ResearchTopic."""
+    
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    tags: Optional[List[str]] = Field(None)
+
+
+class ResearchTopic(BrainForgeBaseModel, TimestampMixin, ProvenanceMixin):
+    """Research topic model with constitutional compliance."""
+    
+    id: UUID = Field(default_factory=uuid4)
+    title: str
+    description: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    constitutional_audit: Dict[str, Any] = Field(default_factory=dict)
+    
+    class Config:
+        from_attributes = True
+]]]>

@@ -1,0 +1,208 @@
+<![CDATA[<tool_usage_guide>
+  <tool_priorities>
+    <priority level="1">
+      <tool>codebase_search</tool>
+      <when>Always use first to find relevant code and understand BrainForge patterns</when>
+      <why>Semantic search finds functionality based on meaning, not just keywords. Essential for understanding BrainForge's specific patterns and constitutional compliance requirements.</why>
+    </priority>
+    <priority level="2">
+      <tool>read_file</tool>
+      <when>After identifying files with codebase_search to examine implementations</when>
+      <why>Get full context of BrainForge patterns, constitutional compliance requirements, and existing service implementations.</why>
+    </priority>
+    <priority level="3">
+      <tool>search_files</tool>
+      <when>For specific pattern matching after understanding the codebase structure</when>
+      <why>Use regex patterns to find specific BrainForge patterns like BaseService implementations, constitutional compliance fields, or specific API endpoints.</why>
+    </priority>
+    <priority level="4">
+      <tool>apply_diff</tool>
+      <when>Making surgical edits to existing Python files</when>
+      <why>Precise changes that maintain BrainForge patterns and constitutional compliance requirements.</why>
+    </priority>
+    <priority level="5">
+      <tool>execute_command</tool>
+      <when>Running tests, migrations, or development commands</when>
+      <why>Essential for BrainForge development workflow: testing, database migrations, and code quality checks.</why>
+    </priority>
+  </tool_priorities>
+
+  <brainforge_specific_tool_usage>
+    <tool name="codebase_search">
+      <purpose>Find BrainForge-specific patterns and implementations</purpose>
+      <when_to_use>
+        <scenario>Before starting any development task</scenario>
+        <scenario>When looking for existing service implementations</scenario>
+        <scenario>When understanding constitutional compliance patterns</scenario>
+        <scenario>When finding MCP tool implementations</scenario>
+      </when_to_use>
+      <examples>
+        <example scenario="find_service_implementations">
+          <query>BaseService implementations in BrainForge</query>
+          <expected_results>Files containing BaseService patterns and service layer implementations</expected_results>
+        </example>
+        <example scenario="find_constitutional_compliance">
+          <query>constitutional compliance patterns in models</query>
+          <expected_results>Files with TimestampMixin, ProvenanceMixin, and constitutional_audit fields</expected_results>
+        </example>
+        <example scenario="find_mcp_tools">
+          <query>MCP tool implementations in BrainForge</query>
+          <expected_results>Files in src/mcp/ directory with MCP tool patterns</expected_results>
+        </example>
+      </examples>
+    </tool>
+
+    <tool name="read_file">
+      <purpose>Examine BrainForge patterns and constitutional compliance requirements</purpose>
+      <when_to_use>
+        <scenario>After codebase_search to understand specific implementations</scenario>
+        <scenario>When examining BaseService patterns</scenario>
+        <scenario>When reviewing constitutional compliance in models</scenario>
+        <scenario>When understanding API endpoint structures</scenario>
+      </when_to_use>
+      <best_practices>
+        <practice>Always read src/models/base.py first to understand BrainForge base patterns</practice>
+        <practice>Examine src/services/base.py for service layer patterns</practice>
+        <practice>Review existing API routes for FastAPI patterns</practice>
+        <practice>Check alembic migrations for database schema patterns</practice>
+      </best_practices>
+    </tool>
+
+    <tool name="apply_diff">
+      <purpose>Make precise changes while maintaining BrainForge patterns</purpose>
+      <when_to_use>
+        <scenario>Adding new fields to existing models</scenario>
+        <scenario>Implementing new service methods</scenario>
+        <scenario>Creating new API endpoints</scenario>
+        <scenario>Adding constitutional compliance to new models</scenario>
+      </when_to_use>
+      <brainforge_specific_guidance>
+        <guideline>Always include constitutional_audit fields in new models</guideline>
+        <guideline>Use async patterns for all database operations</guideline>
+        <guideline>Follow BaseService patterns for service implementations</guideline>
+        <guideline>Include proper error handling with DatabaseError</guideline>
+      </brainforge_specific_guidance>
+      <example><![CDATA[
+<apply_diff>
+<path>src/models/my_new_model.py</path>
+<diff>
+<<<<<<< SEARCH
+:start_line:15
+-------
+class MyNewModel(BrainForgeBaseModel, TimestampMixin):
+    id: UUID = Field(default_factory=uuid4)
+    name: str
+=======
+class MyNewModel(BrainForgeBaseModel, TimestampMixin, ProvenanceMixin):
+    id: UUID = Field(default_factory=uuid4)
+    name: str
+    constitutional_audit: Dict[str, Any] = Field(default_factory=dict)
+>>>>>>> REPLACE
+</diff>
+</apply_diff>
+      ]]></example>
+    </tool>
+
+    <tool name="execute_command">
+      <purpose>Run BrainForge development workflow commands</purpose>
+      <when_to_use>
+        <scenario>Running tests after making changes</scenario>
+        <scenario>Creating and running database migrations</scenario>
+        <scenario>Checking code quality with ruff</scenario>
+        <scenario>Starting development servers</scenario>
+      </when_to_use>
+      <brainforge_commands>
+        <command name="test_suite">
+          <description>Run BrainForge test suite</description>
+          <syntax>cd src; pytest</syntax>
+          <purpose>Verify changes don't break existing functionality</purpose>
+        </command>
+        <command name="code_quality">
+          <description>Check code quality with ruff</description>
+          <syntax>cd src; ruff check .</syntax>
+          <purpose>Ensure code follows BrainForge conventions</purpose>
+        </command>
+        <command name="migration_create">
+          <description>Create new database migration</description>
+          <syntax>alembic revision --autogenerate -m "description"</syntax>
+          <purpose>Generate migration for schema changes</purpose>
+        </command>
+        <command name="migration_run">
+          <description>Run database migrations</description>
+          <syntax>alembic upgrade head</syntax>
+          <purpose>Apply pending migrations</purpose>
+        </command>
+        <command name="development_server">
+          <description>Start development server</description>
+          <syntax>cd src; uvicorn api.main:app --reload</syntax>
+          <purpose>Test API endpoints locally</purpose>
+        </command>
+      </brainforge_commands>
+    </tool>
+  </brainforge_specific_tool_usage>
+
+  <workflow_examples>
+    <workflow name="create_new_model">
+      <description>Complete workflow for creating a new BrainForge model</description>
+      <steps>
+        <step>Use codebase_search to find similar model implementations</step>
+        <step>Read src/models/base.py to understand BrainForge patterns</step>
+        <step>Examine existing models for constitutional compliance patterns</step>
+        <step>Create new model file with apply_diff</step>
+        <step>Create corresponding service with BaseService pattern</step>
+        <step>Create API endpoints with FastAPI patterns</step>
+        <step>Run tests: cd src; pytest</step>
+        <step>Check code quality: cd src; ruff check .</step>
+      </steps>
+    </workflow>
+
+    <workflow name="add_new_api_endpoint">
+      <description>Workflow for adding new API endpoint</description>
+      <steps>
+        <step>Use codebase_search to find similar API implementations</step>
+        <step>Read existing route files to understand patterns</step>
+        <step>Examine API dependencies and error handling</step>
+        <step>Add new endpoint with apply_diff</step>
+        <step>Test endpoint with development server</step>
+        <step>Run API tests: cd src; pytest tests/test_api_routes.py</step>
+      </steps>
+    </workflow>
+
+    <workflow name="database_migration">
+      <description>Workflow for database schema changes</description>
+      <steps>
+        <step>Modify model with constitutional compliance</step>
+        <step>Generate migration: alembic revision --autogenerate -m "description"</step>
+        <step>Review migration file for accuracy</step>
+        <step>Run migration: alembic upgrade head</step>
+        <step>Test migration with existing data</step>
+        <step>Run database tests: cd src; pytest tests/test_migrations.py</step>
+      </steps>
+    </workflow>
+  </workflow_examples>
+
+  <error_handling_guidance>
+    <common_errors>
+      <error type="constitutional_compliance">
+        <description>Missing constitutional compliance in models</description>
+        <solution>Always include TimestampMixin, ProvenanceMixin, and constitutional_audit fields</solution>
+        <prevention>Use codebase_search to examine existing model patterns before creating new ones</prevention>
+      </error>
+      <error type="async_patterns">
+        <description>Using synchronous database operations</description>
+        <solution>Always use async patterns with AsyncSession and await</solution>
+        <prevention>Follow async-first patterns from existing service implementations</prevention>
+      </error>
+      <error type="service_abstraction">
+        <description>Direct database access without service layer</description>
+        <solution>Use BaseService patterns for all database operations</solution>
+        <prevention>Examine src/services/base.py for proper service patterns</prevention>
+      </error>
+      <error type="migration_issues">
+        <description>Migration conflicts or errors</description>
+        <solution>Review migration files carefully and test with alembic upgrade head</solution>
+        <prevention>Always test migrations in development environment first</prevention>
+      </error>
+    </common_errors>
+  </error_handling_guidance>
+</tool_usage_guide>]]>
