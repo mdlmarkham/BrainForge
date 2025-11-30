@@ -2,8 +2,6 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
-from uuid import UUID
 
 from pydantic import ConfigDict, Field, field_validator
 
@@ -37,15 +35,15 @@ class IngestionTaskBase(ProvenanceMixin, TimestampMixin):
     """Base ingestion task model with constitutional compliance fields."""
 
     content_type: ContentType = Field(..., description="Type of content being ingested")
-    source_url: Optional[str] = Field(None, description="Original source URL")
-    file_name: Optional[str] = Field(None, description="File name for uploaded content")
-    file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    tags: List[str] = Field(default_factory=list, description="Initial tags for classification")
+    source_url: str | None = Field(None, description="Original source URL")
+    file_name: str | None = Field(None, description="File name for uploaded content")
+    file_size: int | None = Field(None, ge=0, description="File size in bytes")
+    tags: list[str] = Field(default_factory=list, description="Initial tags for classification")
     priority: str = Field(default="normal", description="Processing priority")
     processing_state: ProcessingState = Field(default=ProcessingState.VALIDATING, description="Current processing state")
     processing_attempts: int = Field(default=0, ge=0, description="Number of processing attempts")
-    last_processing_error: Optional[str] = Field(None, description="Last error message if processing failed")
-    estimated_completion: Optional[datetime] = Field(None, description="Estimated completion time")
+    last_processing_error: str | None = Field(None, description="Last error message if processing failed")
+    estimated_completion: datetime | None = Field(None, description="Estimated completion time")
 
     @field_validator('priority')
     @classmethod
@@ -58,7 +56,7 @@ class IngestionTaskBase(ProvenanceMixin, TimestampMixin):
 
     @field_validator('file_size')
     @classmethod
-    def validate_file_size(cls, v: Optional[int]) -> Optional[int]:
+    def validate_file_size(cls, v: int | None) -> int | None:
         """Validate file size constraints."""
         if v is not None:
             # PDF files must be ≤ 100MB

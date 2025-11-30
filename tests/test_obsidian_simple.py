@@ -3,7 +3,12 @@
 import pytest
 import pytest_asyncio
 
-from src.services.obsidian import ObsidianService, ObsidianNote, ObsidianServerInfo, ObsidianCommand
+from src.services.obsidian import (
+    ObsidianCommand,
+    ObsidianNote,
+    ObsidianServerInfo,
+    ObsidianService,
+)
 
 
 @pytest.fixture
@@ -27,7 +32,7 @@ async def obsidian_service(mock_obsidian_config):
 
 class TestObsidianServiceSimple:
     """Simple test cases for ObsidianService."""
-    
+
     @pytest.mark.asyncio
     async def test_initialization(self, mock_obsidian_config):
         """Test service initialization."""
@@ -35,11 +40,11 @@ class TestObsidianServiceSimple:
             base_url=mock_obsidian_config["base_url"],
             token=mock_obsidian_config["token"]
         )
-        
+
         assert service.base_url == "http://localhost:27124"
         assert service.token == "test-token"
         assert service.client is None
-    
+
     @pytest.mark.asyncio
     async def test_context_manager(self, obsidian_service):
         """Test async context manager."""
@@ -48,7 +53,7 @@ class TestObsidianServiceSimple:
             # Client should be properly initialized
             assert hasattr(obsidian_service.client, 'get')
             assert hasattr(obsidian_service.client, 'post')
-    
+
     @pytest.mark.asyncio
     async def test_connection_failure(self, obsidian_service):
         """Test connection failure handling."""
@@ -70,7 +75,7 @@ class TestObsidianServiceSimple:
 
 class TestObsidianModels:
     """Test cases for Obsidian data models."""
-    
+
     def test_obsidian_note_model(self):
         """Test ObsidianNote model creation."""
         note = ObsidianNote(
@@ -80,12 +85,12 @@ class TestObsidianModels:
             stat={"size": 100},
             tags=["test"]
         )
-        
+
         assert note.content == "# Test Note"
         assert note.frontmatter == {"title": "Test"}
         assert note.path == "test.md"
         assert note.tags == ["test"]
-    
+
     def test_obsidian_server_info_model(self):
         """Test ObsidianServerInfo model creation."""
         info = ObsidianServerInfo(
@@ -94,18 +99,18 @@ class TestObsidianModels:
             service="obsidian-local-rest-api",
             versions={"obsidian": "1.0.0"}
         )
-        
+
         assert info.authenticated == True
         assert info.ok == "ok"
         assert info.service == "obsidian-local-rest-api"
-    
+
     def test_obsidian_command_model(self):
         """Test ObsidianCommand model creation."""
         command = ObsidianCommand(
             id="test-command",
             name="Test Command"
         )
-        
+
         assert command.id == "test-command"
         assert command.name == "Test Command"
 

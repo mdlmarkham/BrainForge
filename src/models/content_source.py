@@ -1,7 +1,6 @@
 """Content Source model for external content discovered by researcher agent."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import Field
@@ -20,7 +19,7 @@ class ContentSourceType:
 
 class ContentSource(BaseEntity):
     """Represents external content discovered by the researcher agent."""
-    
+
     research_run_id: UUID = Field(..., description="ID of the research run that discovered this source")
     source_type: str = Field(..., description="Type of content source")
     source_url: str = Field(..., description="URL or identifier of the source")
@@ -29,14 +28,14 @@ class ContentSource(BaseEntity):
     retrieval_method: str = Field(..., description="Method used to retrieve the content")
     retrieval_timestamp: datetime = Field(..., description="When the content was retrieved")
     content_hash: str = Field(..., description="Hash of the content for deduplication")
-    raw_content: Optional[str] = Field(default=None, description="Raw content text")
+    raw_content: str | None = Field(default=None, description="Raw content text")
     is_duplicate: bool = Field(default=False, description="Whether this is a duplicate of another source")
-    duplicate_of: Optional[UUID] = Field(default=None, description="ID of the original source if duplicate")
+    duplicate_of: UUID | None = Field(default=None, description="ID of the original source if duplicate")
 
 
 class ContentSourceCreate(BaseEntity):
     """Create schema for content sources."""
-    
+
     research_run_id: UUID = Field(..., description="ID of the research run that discovered this source")
     source_type: str = Field(..., description="Type of content source")
     source_url: str = Field(..., description="URL or identifier of the source")
@@ -45,15 +44,15 @@ class ContentSourceCreate(BaseEntity):
     retrieval_method: str = Field(..., description="Method used to retrieve the content")
     retrieval_timestamp: datetime = Field(..., description="When the content was retrieved")
     content_hash: str = Field(..., description="Hash of the content for deduplication")
-    raw_content: Optional[str] = Field(default=None, description="Raw content text")
+    raw_content: str | None = Field(default=None, description="Raw content text")
 
 
 class ContentSourceUpdate(BaseEntity):
     """Update schema for content sources."""
-    
-    source_type: Optional[str] = Field(default=None, description="Type of content source")
-    source_title: Optional[str] = Field(default=None, description="Title of the content")
-    source_metadata: Optional[dict[str, str]] = Field(default=None, description="Metadata about the source")
-    raw_content: Optional[str] = Field(default=None, description="Raw content text")
-    is_duplicate: Optional[bool] = Field(default=None, description="Whether this is a duplicate of another source")
-    duplicate_of: Optional[UUID] = Field(default=None, description="ID of the original source if duplicate")
+
+    source_type: str | None = Field(default=None, description="Type of content source")
+    source_title: str | None = Field(default=None, description="Title of the content")
+    source_metadata: dict[str, str] | None = Field(default=None, description="Metadata about the source")
+    raw_content: str | None = Field(default=None, description="Raw content text")
+    is_duplicate: bool | None = Field(default=None, description="Whether this is a duplicate of another source")
+    duplicate_of: UUID | None = Field(default=None, description="ID of the original source if duplicate")

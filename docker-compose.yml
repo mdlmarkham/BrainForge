@@ -18,6 +18,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    command: redis-server --appendonly yes
 
   api:
     build: .
@@ -27,18 +49,38 @@ services:
       - .env
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis:6379
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - EMBEDDING_MODEL=text-embedding-3-small
       - EMBEDDING_DIMENSION=1536
       - LOG_LEVEL=INFO
       - SECRET_KEY=${SECRET_KEY}
       - JWT_EXPIRE_MINUTES=${JWT_EXPIRE_MINUTES}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     depends_on:
       database:
         condition: service_healthy
-    volumes:
-      - ./src:/app/src
-      - ./config:/app/config
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.brainforge.rule=Host(`${DOMAIN_NAME}`)"
+      - "traefik.http.routers.brainforge.tls=true"
 
   migrations:
     build: .
@@ -49,10 +91,31 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    restart: on-failure
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  backup:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - BACKUP_SCHEDULE=0 2 * * *  # Daily at 2 AM
+      - BACKUP_RETENTION_DAYS=7
+    depends_on:
+      database:
+        condition: service_healthy
     volumes:
-      - ./src:/app/src
-      - ./config:/app/config
-    command: python src/cli/migrate.py
+      - backup_data:/backups
+    restart: unless-stopped
+    command: python src/cli/backup.py
 
 volumes:
   postgres_data:
+  redis_data:
+  backup_data:

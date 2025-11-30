@@ -39,14 +39,14 @@ class NoteBase(ProvenanceMixin, VersionMixin, AIGeneratedMixin):
         """Validate metadata structure and content."""
         if not isinstance(v, dict):
             raise ValueError("Metadata must be a dictionary")
-        
+
         # Validate metadata keys and values
         for key, value in v.items():
             if not isinstance(key, str):
                 raise ValueError("Metadata keys must be strings")
             if not isinstance(value, (str, int, float, bool, list, dict)) and value is not None:
                 raise ValueError(f"Metadata value for key '{key}' must be a valid JSON type")
-        
+
         return v
 
     @field_validator('note_type')

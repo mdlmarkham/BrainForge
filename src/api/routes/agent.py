@@ -3,11 +3,12 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status, Depends
-
-from src.models.agent_run import AgentRun, AgentRunCreate, AgentRunStatus
-from src.api.dependencies import AgentRunServiceDep, DatabaseSession
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.api.dependencies import AgentRunServiceDep, CurrentUser, DatabaseSession
+from src.models.agent_run import AgentRun, AgentRunCreate
+from src.models.orm.user import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -17,13 +18,14 @@ router = APIRouter()
 async def execute_agent(
     agent_run_data: AgentRunCreate,
     session: AsyncSession = DatabaseSession,
-    agent_run_service = AgentRunServiceDep
+    agent_run_service = AgentRunServiceDep,
+    current_user: User = CurrentUser
 ):
     """Execute an agent workflow."""
     try:
         # Validate the agent run data using Pydantic model
         validated_data = agent_run_data.model_dump()
-        
+
         # Create the agent run
         agent_run = await agent_run_service.create(session, validated_data)
         return agent_run
@@ -45,7 +47,8 @@ async def execute_agent(
 async def get_agent_run(
     run_id: UUID,
     session: AsyncSession = DatabaseSession,
-    agent_run_service = AgentRunServiceDep
+    agent_run_service = AgentRunServiceDep,
+    current_user: User = CurrentUser
 ):
     """Get agent run status."""
     try:

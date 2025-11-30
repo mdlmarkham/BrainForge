@@ -1,11 +1,11 @@
 """Authentication routes for BrainForge."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import DatabaseSession, auth_service, CurrentUser
-from src.models.user import UserCreate, UserLogin, UserResponse, Token
+from src.api.dependencies import CurrentUser, DatabaseSession, auth_service
 from src.models.orm.user import User
+from src.models.user import Token, UserCreate, UserLogin, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
@@ -31,7 +31,7 @@ async def register(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create user",
@@ -45,19 +45,19 @@ async def login(
 ):
     """Login user and return JWT token."""
     user = await auth_service.authenticate_user(session, user_login.username, user_login.password)
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
         )
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is inactive",
         )
-    
+
     access_token = auth_service.create_access_token(user.id)
     return Token(access_token=access_token, token_type="bearer")
 

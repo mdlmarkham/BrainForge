@@ -1,8 +1,7 @@
 """Connection suggestion service for recommending relationships between content sources."""
 
 import logging
-from typing import List, Dict, Any, Optional
-from uuid import UUID
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,52 +13,52 @@ logger = logging.getLogger(__name__)
 
 class ConnectionSuggester:
     """Suggests connections and relationships between content sources for integration."""
-    
+
     def __init__(self):
         self.semantic_analyzer = SemanticAnalyzer()
-    
-    async def suggest_connections(self, db: AsyncSession, content_source: ContentSource, 
-                                max_suggestions: int = 10) -> List[Dict[str, Any]]:
+
+    async def suggest_connections(self, db: AsyncSession, content_source: ContentSource,
+                                max_suggestions: int = 10) -> list[dict[str, Any]]:
         """Suggest connections between the content source and existing knowledge."""
-        
+
         try:
             # Get semantic neighbors
             neighbors = await self.semantic_analyzer.get_semantic_neighbors(db, content_source, max_suggestions)
-            
+
             # Generate connection suggestions
             connections = []
             for neighbor in neighbors:
                 connection = self._generate_connection_suggestion(content_source, neighbor)
                 if connection:
                     connections.append(connection)
-            
+
             # Sort by connection strength
             connections.sort(key=lambda x: x.get('strength', 0), reverse=True)
-            
+
             # Limit to max suggestions
             connections = connections[:max_suggestions]
-            
+
             logger.info(f"Generated {len(connections)} connection suggestions for content source {content_source.id}")
             return connections
-            
+
         except Exception as e:
             logger.error(f"Failed to suggest connections for content source {content_source.id}: {e}")
             return []
-    
-    def _generate_connection_suggestion(self, source: ContentSource, neighbor: Dict) -> Dict[str, Any]:
+
+    def _generate_connection_suggestion(self, source: ContentSource, neighbor: dict) -> dict[str, Any]:
         """Generate a connection suggestion between two content sources."""
-        
+
         similarity_score = neighbor.get('similarity_score', 0.0)
-        
+
         # Determine connection type based on similarity and content characteristics
         connection_type = self._determine_connection_type(source, neighbor, similarity_score)
-        
+
         # Calculate connection strength
         strength = self._calculate_connection_strength(similarity_score, connection_type)
-        
+
         # Generate connection rationale
         rationale = self._generate_connection_rationale(source, neighbor, connection_type, similarity_score)
-        
+
         return {
             "target_content_id": neighbor.get('content_source_id'),
             "target_title": neighbor.get('title', 'Unknown'),
@@ -69,10 +68,10 @@ class ConnectionSuggester:
             "rationale": rationale,
             "suggested_action": self._get_suggested_action(connection_type, strength)
         }
-    
-    def _determine_connection_type(self, source: ContentSource, neighbor: Dict, similarity: float) -> str:
+
+    def _determine_connection_type(self, source: ContentSource, neighbor: dict, similarity: float) -> str:
         """Determine the type of connection between content sources."""
-        
+
         # Base connection type on similarity score
         if similarity >= 0.8:
             return "direct_related"
@@ -82,12 +81,12 @@ class ConnectionSuggester:
             return "contextually_related"
         else:
             return "loosely_related"
-    
+
     def _calculate_connection_strength(self, similarity: float, connection_type: str) -> float:
         """Calculate the strength of a connection suggestion."""
-        
+
         base_strength = similarity
-        
+
         # Adjust strength based on connection type
         type_multipliers = {
             "direct_related": 1.2,
@@ -95,31 +94,31 @@ class ConnectionSuggester:
             "contextually_related": 0.8,
             "loosely_related": 0.6
         }
-        
+
         multiplier = type_multipliers.get(connection_type, 1.0)
         strength = base_strength * multiplier
-        
+
         return min(1.0, strength)
-    
-    def _generate_connection_rationale(self, source: ContentSource, neighbor: Dict, 
+
+    def _generate_connection_rationale(self, source: ContentSource, neighbor: dict,
                                      connection_type: str, similarity: float) -> str:
         """Generate a rationale for the connection suggestion."""
-        
+
         source_title = source.title or "the source content"
         neighbor_title = neighbor.get('title', 'the target content')
-        
+
         rationales = {
             "direct_related": f"High semantic similarity ({similarity:.2f}) suggests {source_title} is directly related to {neighbor_title}",
             "thematically_related": f"Strong thematic alignment ({similarity:.2f}) indicates {source_title} shares core themes with {neighbor_title}",
             "contextually_related": f"Moderate similarity ({similarity:.2f}) suggests {source_title} provides relevant context for {neighbor_title}",
             "loosely_related": f"Basic similarity ({similarity:.2f}) indicates potential loose connection between {source_title} and {neighbor_title}"
         }
-        
+
         return rationales.get(connection_type, f"Content shows {similarity:.2f} similarity with existing knowledge")
-    
+
     def _get_suggested_action(self, connection_type: str, strength: float) -> str:
         """Get suggested action for the connection."""
-        
+
         if strength >= 0.8:
             return "create_bidirectional_link"
         elif strength >= 0.6:
@@ -128,87 +127,87 @@ class ConnectionSuggester:
             return "add_as_reference"
         else:
             return "note_possible_connection"
-    
-    async def suggest_hierarchical_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict[str, Any]]:
+
+    async def suggest_hierarchical_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict[str, Any]]:
         """Suggest hierarchical connections (parent-child relationships)."""
-        
+
         try:
             # This would typically use more sophisticated analysis
             # For now, use basic semantic similarity with content type analysis
-            
+
             hierarchical_connections = []
-            
+
             # Suggest parent connections (broader topics)
             parent_suggestions = await self._suggest_parent_connections(db, content_source)
             hierarchical_connections.extend(parent_suggestions)
-            
+
             # Suggest child connections (more specific topics)
             child_suggestions = await self._suggest_child_connections(db, content_source)
             hierarchical_connections.extend(child_suggestions)
-            
+
             return hierarchical_connections
-            
+
         except Exception as e:
             logger.error(f"Failed to suggest hierarchical connections for content source {content_source.id}: {e}")
             return []
-    
-    async def _suggest_parent_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict]:
+
+    async def _suggest_parent_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict]:
         """Suggest parent (broader) connections."""
-        
+
         # This would typically analyze content to find broader categories
         # For now, return empty list as placeholder
         return []
-    
-    async def _suggest_child_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict]:
+
+    async def _suggest_child_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict]:
         """Suggest child (more specific) connections."""
-        
+
         # This would typically analyze content to find more specific related topics
         # For now, return empty list as placeholder
         return []
-    
-    async def suggest_temporal_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict[str, Any]]:
+
+    async def suggest_temporal_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict[str, Any]]:
         """Suggest temporal connections (chronological relationships)."""
-        
+
         try:
             temporal_connections = []
-            
+
             # Suggest predecessor connections (earlier related content)
             predecessor_suggestions = await self._suggest_predecessor_connections(db, content_source)
             temporal_connections.extend(predecessor_suggestions)
-            
+
             # Suggest successor connections (later related content)
             successor_suggestions = await self._suggest_successor_connections(db, content_source)
             temporal_connections.extend(successor_suggestions)
-            
+
             return temporal_connections
-            
+
         except Exception as e:
             logger.error(f"Failed to suggest temporal connections for content source {content_source.id}: {e}")
             return []
-    
-    async def _suggest_predecessor_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict]:
+
+    async def _suggest_predecessor_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict]:
         """Suggest predecessor (earlier) connections."""
-        
+
         # This would typically analyze publication dates and content evolution
         # For now, return empty list as placeholder
         return []
-    
-    async def _suggest_successor_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict]:
+
+    async def _suggest_successor_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict]:
         """Suggest successor (later) connections."""
-        
+
         # This would typically analyze publication dates and content evolution
         # For now, return empty list as placeholder
         return []
-    
-    async def suggest_cross_domain_connections(self, db: AsyncSession, content_source: ContentSource) -> List[Dict[str, Any]]:
+
+    async def suggest_cross_domain_connections(self, db: AsyncSession, content_source: ContentSource) -> list[dict[str, Any]]:
         """Suggest cross-domain connections (interdisciplinary relationships)."""
-        
+
         try:
             cross_domain_connections = []
-            
+
             # Analyze content for interdisciplinary potential
             domain_analysis = self._analyze_domain_potential(content_source)
-            
+
             # Generate cross-domain suggestions
             for domain in domain_analysis.get('potential_domains', []):
                 connection = {
@@ -219,16 +218,16 @@ class ConnectionSuggester:
                     "suggested_action": "explore_interdisciplinary_links"
                 }
                 cross_domain_connections.append(connection)
-            
+
             return cross_domain_connections
-            
+
         except Exception as e:
             logger.error(f"Failed to suggest cross-domain connections for content source {content_source.id}: {e}")
             return []
-    
-    def _analyze_domain_potential(self, content_source: ContentSource) -> Dict[str, Any]:
+
+    def _analyze_domain_potential(self, content_source: ContentSource) -> dict[str, Any]:
         """Analyze potential cross-domain relevance."""
-        
+
         # Simple keyword-based domain analysis
         domain_keywords = {
             "technology": ["algorithm", "software", "system", "digital", "comput"],
@@ -237,10 +236,10 @@ class ConnectionSuggester:
             "education": ["learning", "teaching", "curriculum", "pedagogy", "student"],
             "health": ["medical", "health", "treatment", "patient", "clinical"]
         }
-        
+
         content_text = self._get_content_text(content_source)
         potential_domains = []
-        
+
         for domain, keywords in domain_keywords.items():
             keyword_matches = sum(1 for keyword in keywords if keyword in content_text.lower())
             if keyword_matches > 0:
@@ -250,49 +249,49 @@ class ConnectionSuggester:
                     "strength": strength,
                     "keyword_matches": keyword_matches
                 })
-        
+
         # Sort by strength
         potential_domains.sort(key=lambda x: x['strength'], reverse=True)
-        
+
         return {
             "potential_domains": [domain['domain'] for domain in potential_domains[:3]],  # Top 3 domains
             "strength": potential_domains[0]['strength'] if potential_domains else 0.0
         }
-    
+
     def _get_content_text(self, content_source: ContentSource) -> str:
         """Extract text content for analysis."""
-        
+
         text_parts = []
-        
+
         if content_source.title:
             text_parts.append(content_source.title)
-        
+
         if content_source.description:
             text_parts.append(content_source.description)
-        
+
         if hasattr(content_source, 'content') and content_source.content:
             text_parts.append(content_source.content)
-        
+
         return " ".join(text_parts).lower()
-    
-    async def get_connection_analysis_summary(self, db: AsyncSession, content_source: ContentSource) -> Dict[str, Any]:
+
+    async def get_connection_analysis_summary(self, db: AsyncSession, content_source: ContentSource) -> dict[str, Any]:
         """Get comprehensive connection analysis summary."""
-        
+
         try:
             # Get all types of connection suggestions
             semantic_connections = await self.suggest_connections(db, content_source)
             hierarchical_connections = await self.suggest_hierarchical_connections(db, content_source)
             temporal_connections = await self.suggest_temporal_connections(db, content_source)
             cross_domain_connections = await self.suggest_cross_domain_connections(db, content_source)
-            
+
             # Calculate connection density
-            total_connections = (len(semantic_connections) + len(hierarchical_connections) + 
+            total_connections = (len(semantic_connections) + len(hierarchical_connections) +
                                len(temporal_connections) + len(cross_domain_connections))
-            
+
             # Calculate average connection strength
             all_connections = semantic_connections + hierarchical_connections + temporal_connections + cross_domain_connections
             avg_strength = sum(conn.get('strength', 0) for conn in all_connections) / len(all_connections) if all_connections else 0
-            
+
             return {
                 "content_source_id": str(content_source.id),
                 "semantic_connections": len(semantic_connections),
@@ -306,14 +305,14 @@ class ConnectionSuggester:
                     semantic_connections, hierarchical_connections, temporal_connections, cross_domain_connections
                 )
             }
-            
+
         except Exception as e:
             logger.error(f"Failed to generate connection analysis summary for content source {content_source.id}: {e}")
             return {"error": str(e)}
-    
+
     def _calculate_connection_density(self, total_connections: int) -> str:
         """Calculate connection density category."""
-        
+
         if total_connections >= 10:
             return "high"
         elif total_connections >= 5:
@@ -322,17 +321,17 @@ class ConnectionSuggester:
             return "low"
         else:
             return "very_low"
-    
-    def _identify_primary_connection_type(self, semantic: List, hierarchical: List, 
-                                        temporal: List, cross_domain: List) -> str:
+
+    def _identify_primary_connection_type(self, semantic: list, hierarchical: list,
+                                        temporal: list, cross_domain: list) -> str:
         """Identify the primary type of connections suggested."""
-        
+
         connection_counts = {
             "semantic": len(semantic),
             "hierarchical": len(hierarchical),
             "temporal": len(temporal),
             "cross_domain": len(cross_domain)
         }
-        
+
         primary_type = max(connection_counts, key=connection_counts.get)
         return primary_type if connection_counts[primary_type] > 0 else "none"

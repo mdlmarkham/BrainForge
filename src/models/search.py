@@ -1,6 +1,6 @@
 """Search models for BrainForge semantic search functionality."""
 
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -14,8 +14,8 @@ class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, description="Search query text")
     limit: int = Field(default=10, ge=1, le=100, description="Maximum number of results")
     similarity_threshold: float = Field(default=0.7, ge=0.0, le=1.0, description="Minimum similarity score (0-1)")
-    note_types: Optional[list[NoteType]] = Field(default=None, description="Filter by note types")
-    metadata_filters: Optional[dict[str, Any]] = Field(default=None, description="Metadata field filters")
+    note_types: list[NoteType] | None = Field(default=None, description="Filter by note types")
+    metadata_filters: dict[str, Any] | None = Field(default=None, description="Metadata field filters")
     include_embeddings: bool = Field(default=False, description="Include embedding vectors in response")
 
     @field_validator('query')
@@ -28,20 +28,20 @@ class SearchRequest(BaseModel):
 
     @field_validator('metadata_filters')
     @classmethod
-    def validate_metadata_filters(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+    def validate_metadata_filters(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         """Validate metadata filters structure."""
         if v is None:
             return None
-        
+
         if not isinstance(v, dict):
             raise ValueError("Metadata filters must be a dictionary")
-        
+
         for key, value in v.items():
             if not isinstance(key, str):
                 raise ValueError("Metadata filter keys must be strings")
             if not isinstance(value, (str, int, float, bool, list, dict)) and value is not None:
                 raise ValueError(f"Metadata filter value for key '{key}' must be a valid JSON type")
-        
+
         return v
 
 
@@ -53,7 +53,7 @@ class SearchResult(BaseModel):
     note_type: NoteType = Field(..., description="Note type")
     similarity_score: float = Field(..., ge=0.0, le=1.0, description="Semantic similarity score (0-1)")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Note metadata")
-    embedding_vector: Optional[list[float]] = Field(default=None, description="Embedding vector (if requested)")
+    embedding_vector: list[float] | None = Field(default=None, description="Embedding vector (if requested)")
     version: int = Field(..., ge=1, description="Note version")
 
     model_config = ConfigDict(from_attributes=True)

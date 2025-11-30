@@ -5,9 +5,9 @@ Revises: 003_researcher_agent
 Create Date: 2025-11-29 08:54:45.238080
 
 """
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '83aef568935a'

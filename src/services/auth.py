@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta
-from typing import Optional
 from uuid import UUID
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.orm.user import User
 from src.models.user import UserCreate
@@ -35,7 +34,7 @@ class AuthService:
         """Verify a password against its hash."""
         return self.pwd_context.verify(plain_password, hashed_password)
 
-    def create_access_token(self, user_id: UUID, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(self, user_id: UUID, expires_delta: timedelta | None = None) -> str:
         """Create JWT access token."""
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
@@ -49,7 +48,7 @@ class AuthService:
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
 
-    def verify_token(self, token: str) -> Optional[UUID]:
+    def verify_token(self, token: str) -> UUID | None:
         """Verify JWT token and return user ID."""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
@@ -72,7 +71,7 @@ class AuthService:
         )
         result = await session.execute(stmt)
         existing_user = result.scalar_one_or_none()
-        
+
         if existing_user:
             if existing_user.username == user_create.username:
                 raise ValueError("Username already exists")
@@ -95,7 +94,7 @@ class AuthService:
         session: AsyncSession,
         username: str,
         password: str
-    ) -> Optional[User]:
+    ) -> User | None:
         """Authenticate user by username and password."""
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
@@ -106,41 +105,12 @@ class AuthService:
 
         return user
 
-    async def get_user_by_id(self, session: AsyncSession, user_id: UUID) -> Optional[User]:
+    async def get_user_by_id(self, session: AsyncSession, user_id: UUID) -> User | None:
         """Get user by ID."""
         return await session.get(User, user_id)
 
-    async def get_user_by_username(self, session: AsyncSession, username: str) -> Optional[User]:
+    async def get_user_by_username(self, session: AsyncSession, username: str) -> User | None:
         """Get user by username."""
         stmt = select(User).where(User.username == username)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def get_current_user(
-        self,
-        credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
-        session: AsyncSession = Depends(get_db),
-    ) -> User:
-        """Get current authenticated user from JWT token."""
-        from fastapi import HTTPException, status
-        from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-        from src.api.dependencies import get_db
-        
-        token = credentials.credentials
-        user_id = self.verify_token(token)
-
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid authentication credentials",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-
-        user = await self.get_user_by_id(session, user_id)
-        if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found or inactive",
-            )
-
-        return user

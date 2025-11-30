@@ -1,33 +1,37 @@
 """LLM configuration manager for BrainForge multi-provider system."""
 
-import asyncio
 import os
-from typing import Any, Dict, List, Optional
-from uuid import UUID, uuid4
+from typing import Any, Optional
+from uuid import uuid4
 
 from pydantic import Field, validator
 
-from src.config.llm import LLMProviderConfig, LLMProviderSettings, OllamaConfig, OpenAIConfig
-from src.models.base import BrainForgeBaseModel, ProvenanceMixin, TimestampMixin
+from src.config.llm import (
+    LLMProviderConfig,
+    LLMProviderSettings,
+    OllamaConfig,
+    OpenAIConfig,
+)
+from src.models.base import BrainForgeBaseModel
 
 
 class LLMProviderEnvironmentConfig(BrainForgeBaseModel):
     """Environment-based configuration for LLM providers."""
-    
+
     provider_type: str = Field(..., description="Type of LLM provider")
-    base_url: Optional[str] = Field(None, description="Base URL for the provider API")
+    base_url: str | None = Field(None, description="Base URL for the provider API")
     model_name: str = Field(..., description="Model name to use")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: Optional[int] = Field(None, ge=1, description="Maximum tokens to generate")
+    max_tokens: int | None = Field(None, ge=1, description="Maximum tokens to generate")
     timeout: int = Field(30, ge=1, description="Request timeout in seconds")
     max_retries: int = Field(3, ge=0, description="Maximum number of retries")
-    api_key: Optional[str] = Field(None, description="API key for the provider")
-    organization: Optional[str] = Field(None, description="Organization ID")
-    context_window: Optional[int] = Field(None, description="Context window size")
+    api_key: str | None = Field(None, description="API key for the provider")
+    organization: str | None = Field(None, description="Organization ID")
+    context_window: int | None = Field(None, description="Context window size")
     stream: bool = Field(False, description="Enable streaming responses")
     is_active: bool = Field(True, description="Whether this provider is active")
     priority: int = Field(1, ge=1, le=10, description="Provider priority (1-10)")
-    
+
     @validator("temperature")
     def validate_temperature(cls, v: float) -> float:
         """Validate temperature is within reasonable bounds."""
@@ -38,38 +42,38 @@ class LLMProviderEnvironmentConfig(BrainForgeBaseModel):
 
 class LLMConfigManager:
     """Singleton configuration manager for LLM providers."""
-    
+
     _instance: Optional["LLMConfigManager"] = None
-    _configs: Dict[str, LLMProviderEnvironmentConfig] = {}
-    _settings: Dict[str, LLMProviderSettings] = {}
-    
+    _configs: dict[str, LLMProviderEnvironmentConfig] = {}
+    _settings: dict[str, LLMProviderSettings] = {}
+
     def __new__(cls) -> "LLMConfigManager":
         """Ensure singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self) -> None:
         """Initialize configuration manager."""
         if not hasattr(self, "_initialized"):
             self._initialized = True
             self._load_environment_configs()
-    
+
     def _load_environment_configs(self) -> None:
         """Load configuration from environment variables."""
         # Load default providers from environment
         self._load_ollama_config()
         self._load_openai_config()
-        
+
         # Load additional providers from environment
         self._load_custom_providers()
-    
+
     def _load_ollama_config(self) -> None:
         """Load Ollama configuration from environment."""
         ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         ollama_model = os.getenv("OLLAMA_MODEL", "llama2")
         ollama_active = os.getenv("OLLAMA_ACTIVE", "true").lower() == "true"
-        
+
         if ollama_active:
             config = LLMProviderEnvironmentConfig(
                 provider_type="ollama",
@@ -85,12 +89,12 @@ class LLMConfigManager:
                 priority=int(os.getenv("OLLAMA_PRIORITY", "1"))
             )
             self._configs["ollama"] = config
-    
+
     def _load_openai_config(self) -> None:
         """Load OpenAI configuration from environment."""
         openai_key = os.getenv("OPENAI_API_KEY")
         openai_active = os.getenv("OPENAI_ACTIVE", "false").lower() == "true" and openai_key
-        
+
         if openai_active:
             config = LLMProviderEnvironmentConfig(
                 provider_type="openai",
@@ -106,31 +110,31 @@ class LLMConfigManager:
                 priority=int(os.getenv("OPENAI_PRIORITY", "2"))
             )
             self._configs["openai"] = config
-    
+
     def _load_custom_providers(self) -> None:
         """Load custom provider configurations from environment."""
         # This can be extended to load additional providers
         # For now, we'll implement the basic providers
         pass
-    
-    def get_provider_config(self, provider_type: str) -> Optional[LLMProviderEnvironmentConfig]:
+
+    def get_provider_config(self, provider_type: str) -> LLMProviderEnvironmentConfig | None:
         """Get configuration for a specific provider type."""
         return self._configs.get(provider_type)
-    
-    def get_active_providers(self) -> List[LLMProviderEnvironmentConfig]:
+
+    def get_active_providers(self) -> list[LLMProviderEnvironmentConfig]:
         """Get list of active provider configurations."""
         return [config for config in self._configs.values() if config.is_active]
-    
-    def get_priority_sorted_providers(self) -> List[LLMProviderEnvironmentConfig]:
+
+    def get_priority_sorted_providers(self) -> list[LLMProviderEnvironmentConfig]:
         """Get active providers sorted by priority."""
         active_providers = self.get_active_providers()
         return sorted(active_providers, key=lambda x: x.priority)
-    
-    def get_default_provider(self) -> Optional[LLMProviderEnvironmentConfig]:
+
+    def get_default_provider(self) -> LLMProviderEnvironmentConfig | None:
         """Get the highest priority active provider."""
         sorted_providers = self.get_priority_sorted_providers()
         return sorted_providers[0] if sorted_providers else None
-    
+
     def to_provider_config(self, env_config: LLMProviderEnvironmentConfig) -> LLMProviderConfig:
         """Convert environment config to provider-specific config."""
         if env_config.provider_type == "ollama":
@@ -159,11 +163,11 @@ class LLMConfigManager:
             )
         else:
             raise ValueError(f"Unsupported provider type: {env_config.provider_type}")
-    
+
     def to_provider_settings(self, env_config: LLMProviderEnvironmentConfig) -> LLMProviderSettings:
         """Convert environment config to provider settings with constitutional compliance."""
         provider_config = self.to_provider_config(env_config)
-        
+
         return LLMProviderSettings(
             id=uuid4(),
             name=f"{env_config.provider_type.capitalize()} Provider",
@@ -176,42 +180,42 @@ class LLMConfigManager:
                 "compliance_checked": True
             }
         )
-    
+
     async def reload_configurations(self) -> None:
         """Reload configurations from environment (for hot-reloading)."""
         self._configs.clear()
         self._load_environment_configs()
-    
-    def validate_configuration(self, provider_type: str) -> Dict[str, Any]:
+
+    def validate_configuration(self, provider_type: str) -> dict[str, Any]:
         """Validate configuration for a specific provider."""
         config = self.get_provider_config(provider_type)
         if not config:
             return {"valid": False, "errors": ["Provider configuration not found"]}
-        
+
         errors = []
-        
+
         # Validate required fields based on provider type
         if provider_type == "openai" and not config.api_key:
             errors.append("OpenAI API key is required")
-        
+
         if not config.model_name:
             errors.append("Model name is required")
-        
+
         if config.base_url and not config.base_url.startswith(("http://", "https://")):
             errors.append("Base URL must start with http:// or https://")
-        
+
         return {
             "valid": len(errors) == 0,
             "errors": errors,
             "provider_type": provider_type,
             "is_active": config.is_active
         }
-    
-    def get_configuration_summary(self) -> Dict[str, Any]:
+
+    def get_configuration_summary(self) -> dict[str, Any]:
         """Get summary of all configurations."""
         active_providers = self.get_active_providers()
         inactive_providers = [config for config in self._configs.values() if not config.is_active]
-        
+
         return {
             "total_providers": len(self._configs),
             "active_providers": len(active_providers),

@@ -1,21 +1,20 @@
 """MCP Workflow Tools"""
 
 import logging
-import json
-from typing import Dict, Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from ...models.mcp_workflow import MCPWorkflowCreate, MCPWorkflow
+from ...mcp.workflows.integration import WorkflowOrchestrator
+from ...models.mcp_workflow import MCPWorkflow, MCPWorkflowCreate
 from ...services.database import DatabaseService
-from .workflows.integration import WorkflowOrchestrator
 
 
 class WorkflowStartRequest(BaseModel):
     """Workflow start request"""
     workflow_type: str = Field(..., description="Type of workflow to start")
-    parameters: Dict[str, Any] = Field(default_factory=dict, description="Workflow parameters")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Workflow parameters")
     priority: str = Field("normal", description="Workflow priority")
 
 
@@ -26,28 +25,28 @@ class WorkflowStatus(BaseModel):
     status: str
     current_step: str
     progress: float
-    result: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error_message: str | None = None
     created_at: str
     updated_at: str
 
 
 class WorkflowTools:
     """Workflow management tools for BrainForge library"""
-    
+
     def __init__(self, database_service: DatabaseService, workflow_orchestrator: WorkflowOrchestrator):
         self.database_service = database_service
         self.workflow_orchestrator = workflow_orchestrator
         self.logger = logging.getLogger(__name__)
-    
+
     async def start_research_workflow(
-        self, 
-        workflow_type: str, 
-        parameters: Dict[str, Any] = None,
+        self,
+        workflow_type: str,
+        parameters: dict[str, Any] = None,
         priority: str = "normal"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Start a research workflow for agent operations"""
-        
+
         try:
             # Validate workflow type
             supported_workflows = ["research_discovery", "content_analysis", "connection_mapping"]
@@ -56,7 +55,7 @@ class WorkflowTools:
                     "error": f"Unsupported workflow type. Supported: {supported_workflows}",
                     "status": "failed"
                 }
-            
+
             # Create workflow record
             workflow_create = MCPWorkflowCreate(
                 workflow_type=workflow_type,
@@ -65,16 +64,16 @@ class WorkflowTools:
                 status="initializing",
                 priority=priority
             )
-            
+
             async with self.database_service.session() as session:
                 db_workflow = await self.database_service.create(
                     session, "mcp_workflows", workflow_create.dict()
                 )
                 workflow = MCPWorkflow.from_orm(db_workflow)
-            
+
             # Start the workflow
             workflow_result = await self.workflow_orchestrator.start_workflow(workflow.id)
-            
+
             return {
                 "workflow_id": workflow.id,
                 "workflow_type": workflow_type,
@@ -84,7 +83,7 @@ class WorkflowTools:
                 "parameters": parameters or {},
                 "priority": priority
             }
-            
+
         except Exception as e:
             self.logger.error(f"Workflow start failed: {e}")
             return {
@@ -92,29 +91,29 @@ class WorkflowTools:
                 "error": f"Failed to start workflow: {str(e)}",
                 "status": "failed"
             }
-    
-    async def get_workflow_status(self, workflow_id: UUID) -> Dict[str, Any]:
+
+    async def get_workflow_status(self, workflow_id: UUID) -> dict[str, Any]:
         """Get the status of a running workflow"""
-        
+
         try:
             # Get workflow record
             async with self.database_service.session() as session:
                 db_workflow = await self.database_service.get_by_id(
                     session, "mcp_workflows", workflow_id
                 )
-                
+
                 if not db_workflow:
                     return {
                         "workflow_id": str(workflow_id),
                         "error": "Workflow not found",
                         "status": "not_found"
                     }
-                
+
                 workflow = MCPWorkflow.from_orm(db_workflow)
-            
+
             # Get current status from orchestrator
             status_info = await self.workflow_orchestrator.get_workflow_status(workflow_id)
-            
+
             return {
                 "workflow_id": workflow_id,
                 "workflow_type": workflow.workflow_type,
@@ -126,7 +125,7 @@ class WorkflowTools:
                 "created_at": workflow.created_at.isoformat() if workflow.created_at else "Unknown",
                 "updated_at": workflow.updated_at.isoformat() if workflow.updated_at else "Unknown"
             }
-            
+
         except Exception as e:
             self.logger.error(f"Failed to get workflow status: {e}")
             return {
@@ -134,31 +133,31 @@ class WorkflowTools:
                 "error": f"Failed to get workflow status: {str(e)}",
                 "status": "error"
             }
-    
+
     async def list_workflows(
-        self, 
-        status: Optional[str] = None,
-        workflow_type: Optional[str] = None,
+        self,
+        status: str | None = None,
+        workflow_type: str | None = None,
         limit: int = 20
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """List workflows with optional filtering"""
-        
+
         try:
             filters = {}
             if status:
                 filters["status"] = status
             if workflow_type:
                 filters["workflow_type"] = workflow_type
-            
+
             async with self.database_service.session() as session:
                 db_workflows = await self.database_service.get_all(
-                    session, 
-                    "mcp_workflows", 
+                    session,
+                    "mcp_workflows",
                     filters=filters,
                     limit=limit,
                     order_by="created_at DESC"
                 )
-                
+
                 workflows = []
                 for db_workflow in db_workflows:
                     workflow = MCPWorkflow.from_orm(db_workflow)
@@ -170,7 +169,7 @@ class WorkflowTools:
                         "created_at": workflow.created_at.isoformat() if workflow.created_at else "Unknown",
                         "updated_at": workflow.updated_at.isoformat() if workflow.updated_at else "Unknown"
                     })
-                
+
                 return {
                     "total_workflows": len(workflows),
                     "workflows": workflows,
@@ -179,35 +178,35 @@ class WorkflowTools:
                         "workflow_type": workflow_type
                     }
                 }
-                
+
         except Exception as e:
             self.logger.error(f"Failed to list workflows: {e}")
             return {
                 "error": f"Failed to list workflows: {str(e)}",
                 "status": "failed"
             }
-    
-    async def cancel_workflow(self, workflow_id: UUID) -> Dict[str, Any]:
+
+    async def cancel_workflow(self, workflow_id: UUID) -> dict[str, Any]:
         """Cancel a running workflow"""
-        
+
         try:
             result = await self.workflow_orchestrator.cancel_workflow(workflow_id)
-            
+
             # Update workflow status
             async with self.database_service.session() as session:
                 await self.database_service.update(
-                    session, 
-                    "mcp_workflows", 
-                    workflow_id, 
+                    session,
+                    "mcp_workflows",
+                    workflow_id,
                     {"status": "cancelled"}
                 )
-            
+
             return {
                 "workflow_id": str(workflow_id),
                 "status": "cancelled",
                 "message": result.get("message", "Workflow cancelled")
             }
-            
+
         except Exception as e:
             self.logger.error(f"Failed to cancel workflow: {e}")
             return {
@@ -215,17 +214,17 @@ class WorkflowTools:
                 "error": f"Failed to cancel workflow: {str(e)}",
                 "status": "failed"
             }
-    
-    def _get_bpmn_template(self, workflow_type: str) -> Dict[str, Any]:
+
+    def _get_bpmn_template(self, workflow_type: str) -> dict[str, Any]:
         """Get BPMN template for workflow type"""
-        
+
         templates = {
             "research_discovery": {
                 "process_id": "research_discovery",
                 "name": "Research Discovery Workflow",
                 "steps": [
                     "topic_analysis",
-                    "source_discovery", 
+                    "source_discovery",
                     "content_ingestion",
                     "semantic_analysis",
                     "connection_mapping",
@@ -255,5 +254,5 @@ class WorkflowTools:
                 ]
             }
         }
-        
+
         return templates.get(workflow_type, {})

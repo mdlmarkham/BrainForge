@@ -20,16 +20,16 @@ class EmbeddingBase(BaseModel):
         """Validate vector dimension matches configured model."""
         if not v:
             raise ValueError("Vector cannot be empty")
-        
+
         # Validate vector dimensions (basic validation - can be enhanced with config)
         if len(v) == 0:
             raise ValueError("Vector must have at least one dimension")
-        
+
         # Validate all elements are numeric
         for i, value in enumerate(v):
             if not isinstance(value, (int, float)):
                 raise ValueError(f"Vector element at index {i} must be numeric")
-        
+
         return v
 
     @field_validator('model_version')
@@ -38,11 +38,11 @@ class EmbeddingBase(BaseModel):
         """Validate embedding model version format."""
         if not v or not v.strip():
             raise ValueError("Model version cannot be empty")
-        
+
         # Basic validation for model version format
         if len(v.strip()) < 3:
             raise ValueError("Model version must be at least 3 characters")
-        
+
         return v.strip()
 
     @field_validator('note_id')

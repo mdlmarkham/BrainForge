@@ -1,6 +1,5 @@
 """Quality Assessment model for evaluating content credibility and relevance."""
 
-from typing import Optional
 from uuid import UUID
 
 from pydantic import Field
@@ -19,7 +18,7 @@ class QualityScoreType:
 
 class QualityAssessment(BaseEntity):
     """Represents multi-factor evaluation of content credibility, relevance, and quality."""
-    
+
     content_source_id: UUID = Field(..., description="ID of the content source being assessed")
     score_type: str = Field(..., description="Type of quality score")
     score_value: float = Field(..., ge=0.0, le=1.0, description="Score value between 0 and 1")
@@ -30,7 +29,7 @@ class QualityAssessment(BaseEntity):
 
 class QualityAssessmentCreate(BaseEntity):
     """Create schema for quality assessments."""
-    
+
     content_source_id: UUID = Field(..., description="ID of the content source being assessed")
     score_type: str = Field(..., description="Type of quality score")
     score_value: float = Field(..., ge=0.0, le=1.0, description="Score value between 0 and 1")
@@ -41,7 +40,7 @@ class QualityAssessmentCreate(BaseEntity):
 
 class QualityScore(BaseEntity):
     """Individual quality score component."""
-    
+
     score_type: str = Field(..., description="Type of quality score")
     score_value: float = Field(..., ge=0.0, le=1.0, description="Score value between 0 and 1")
     score_rationale: str = Field(..., description="Rationale for the score")
@@ -50,9 +49,9 @@ class QualityScore(BaseEntity):
 
 class QualityAssessmentUpdate(BaseEntity):
     """Update schema for quality assessments."""
-    
-    score_type: Optional[str] = Field(default=None, description="Type of quality score")
-    score_value: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Score value between 0 and 1")
-    score_rationale: Optional[str] = Field(default=None, description="Rationale for the score")
-    confidence_level: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Confidence in the assessment")
-    assessment_metadata: Optional[dict[str, str]] = Field(default=None, description="Metadata about the assessment")
+
+    score_type: str | None = Field(default=None, description="Type of quality score")
+    score_value: float | None = Field(default=None, ge=0.0, le=1.0, description="Score value between 0 and 1")
+    score_rationale: str | None = Field(default=None, description="Rationale for the score")
+    confidence_level: float | None = Field(default=None, ge=0.0, le=1.0, description="Confidence in the assessment")
+    assessment_metadata: dict[str, str] | None = Field(default=None, description="Metadata about the assessment")

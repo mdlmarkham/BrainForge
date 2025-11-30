@@ -1,7 +1,7 @@
 """Audit trail model for BrainForge ingestion pipeline."""
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import ConfigDict, Field
@@ -14,13 +14,13 @@ class AuditTrailBase(TimestampMixin):
 
     ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
     action_type: str = Field(..., description="Type of action performed")
-    action_details: Dict[str, Any] = Field(
-        default_factory=dict, 
+    action_details: dict[str, Any] = Field(
+        default_factory=dict,
         description="Detailed information about the action"
     )
     performed_by: str = Field(..., description="User or agent who performed the action")
     outcome: str = Field(..., description="Outcome of the action (success, failure, etc.)")
-    error_details: Optional[str] = Field(None, description="Error details if action failed")
+    error_details: str | None = Field(None, description="Error details if action failed")
 
     def model_post_init(self, __context: Any) -> None:
         """Post-initialization validation."""

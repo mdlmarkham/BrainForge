@@ -4,17 +4,14 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
-
-from src.models.pdf_metadata import PDFMetadataCreate
-from src.models.pdf_processing_result import PDFProcessingResultCreate
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class PDFProcessor:
     """PDF processing service using pdfplumber for text extraction and metadata collection."""
-    
+
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         # Initialize pdfplumber parser
@@ -25,21 +22,21 @@ class PDFProcessor:
         # Convert to absolute path and normalize
         abs_path = os.path.abspath(pdf_path)
         normalized_path = os.path.normpath(abs_path)
-        
+
         # Check if path is within allowed directories
         # For security, restrict to current working directory and subdirectories
         current_dir = os.path.abspath(os.getcwd())
         if not normalized_path.startswith(current_dir):
             raise ValueError(f"PDF path {pdf_path} is outside allowed directory")
-        
+
         # Check for directory traversal patterns
         if '..' in normalized_path or normalized_path.startswith('/') or ':' in normalized_path:
             raise ValueError(f"Invalid PDF path: {pdf_path}")
-            
+
         # Check file extension
         if not normalized_path.lower().endswith('.pdf'):
             raise ValueError(f"File {pdf_path} is not a PDF file")
-            
+
         return normalized_path
 
     def _initialize_pdfplumber(self):
@@ -51,14 +48,14 @@ class PDFProcessor:
         except ImportError:
             self.logger.warning("PDFPlumber not available - using fallback PDF processing")
             self.parser = None
-    
-    async def extract_metadata(self, pdf_path: str) -> Dict[str, Any]:
+
+    async def extract_metadata(self, pdf_path: str) -> dict[str, Any]:
         """Extract metadata from PDF using pdfplumber or fallback method."""
         # Validate file path
         validated_path = self._validate_file_path(pdf_path)
-        
+
         start_time = time.time()
-        
+
         try:
             if self.parser:
                 # Use pdfplumber for metadata extraction
@@ -76,29 +73,29 @@ class PDFProcessor:
             else:
                 # Fallback metadata extraction using basic file analysis
                 metadata = await self._extract_metadata_fallback(validated_path)
-            
+
             processing_time = int((time.time() - start_time) * 1000)
             metadata["extraction_method"] = "pdfplumber" if self.parser else "fallback_basic"
             metadata["processing_time_ms"] = processing_time
-            
+
             self.logger.info(f"PDF metadata extracted in {processing_time}ms: {pdf_path}")
             return metadata
-            
+
         except Exception as e:
             self.logger.error(f"Failed to extract PDF metadata: {e}")
             raise
-    
-    async def extract_text(self, pdf_path: str, method: str = "advanced") -> Dict[str, Any]:
+
+    async def extract_text(self, pdf_path: str, method: str = "advanced") -> dict[str, Any]:
         """Extract text from PDF with quality assessment."""
         # Validate file path
         validated_path = self._validate_file_path(pdf_path)
-        
+
         start_time = time.time()
-        
+
         try:
             extracted_text = ""
             quality_score = 0.0
-            
+
             if self.parser:
                 with self.parser.open(validated_path) as pdf:
                     # Extract text from all pages
@@ -107,15 +104,15 @@ class PDFProcessor:
                         page_text = page.extract_text()
                         if page_text:
                             text_parts.append(page_text)
-                    
+
                     extracted_text = "\n".join(text_parts)
                     quality_score = self._assess_text_quality(extracted_text)
             else:
                 # Fallback text extraction
                 extracted_text, quality_score = await self._extract_text_fallback(pdf_path)
-            
+
             processing_time = int((time.time() - start_time) * 1000)
-            
+
             result = {
                 "extracted_text": extracted_text,
                 "quality_score": quality_score,
@@ -125,34 +122,34 @@ class PDFProcessor:
                 "processing_time_ms": processing_time,
                 "pdfplumber_version": "0.10.3" if self.parser else "none"
             }
-            
+
             self.logger.info(f"PDF text extracted in {processing_time}ms: {pdf_path} "
                            f"(quality: {quality_score:.2f}, chars: {len(extracted_text)})")
             return result
-            
+
         except Exception as e:
             self.logger.error(f"Failed to extract PDF text: {e}")
             raise
-    
+
     def _assess_text_quality(self, text: str) -> float:
         """Assess quality of extracted text (0.0-1.0)."""
         if not text or len(text.strip()) < 100:
             return 0.0
-        
+
         # Basic quality assessment based on text characteristics
         lines = text.split('\n')
         avg_line_length = sum(len(line.strip()) for line in lines) / len(lines)
-        
+
         # Higher score for longer average line length and fewer empty lines
         empty_lines = sum(1 for line in lines if not line.strip())
         quality = min(1.0, avg_line_length / 50) * (1 - empty_lines / len(lines))
-        
+
         return max(0.0, min(1.0, quality))
-    
-    async def _extract_metadata_fallback(self, pdf_path: str) -> Dict[str, Any]:
+
+    async def _extract_metadata_fallback(self, pdf_path: str) -> dict[str, Any]:
         """Fallback metadata extraction when pdfplumber is not available."""
         path = Path(pdf_path)
-        
+
         # Basic file-based metadata extraction
         return {
             "page_count": 0,  # Unknown without proper parser
@@ -164,12 +161,12 @@ class PDFProcessor:
             "pdf_version": "unknown",
             "encryption_status": "none"  # Assume no encryption
         }
-    
+
     async def _extract_text_fallback(self, pdf_path: str) -> tuple[str, float]:
         """Fallback text extraction when pdfplumber is not available."""
         # Validate file path
         validated_path = self._validate_file_path(pdf_path)
-        
+
         # This would typically use alternative PDF libraries like PyPDF2
         try:
             import PyPDF2
@@ -180,51 +177,51 @@ class PDFProcessor:
                     text = page.extract_text()
                     if text:
                         text_parts.append(text)
-                
+
                 extracted_text = "\n".join(text_parts)
                 quality_score = self._assess_text_quality(extracted_text)
                 return extracted_text, quality_score
         except ImportError:
             self.logger.warning(f"Using fallback text extraction for {pdf_path} - no text extracted")
             return "", 0.0
-    
-    async def validate_pdf(self, pdf_path: str) -> Dict[str, Any]:
+
+    async def validate_pdf(self, pdf_path: str) -> dict[str, Any]:
         """Validate PDF file for processing."""
         path = Path(pdf_path)
-        
+
         if not path.exists():
             raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-        
+
         if not path.is_file():
             raise ValueError(f"Path is not a file: {pdf_path}")
-        
+
         file_size = path.stat().st_size
         if file_size > 100 * 1024 * 1024:  # 100MB limit
             raise ValueError(f"PDF file too large: {file_size} bytes (>100MB)")
-        
+
         # Basic file type validation
         if path.suffix.lower() != '.pdf':
             raise ValueError(f"File is not a PDF: {pdf_path}")
-        
+
         return {
             "file_size": file_size,
             "file_name": path.name,
             "is_valid": True,
             "validation_notes": "PDF file validated successfully"
         }
-    
-    async def process_pdf(self, pdf_path: str) -> Dict[str, Any]:
+
+    async def process_pdf(self, pdf_path: str) -> dict[str, Any]:
         """Process PDF file through full extraction pipeline."""
         try:
             # Step 1: Validate PDF
             validation_result = await self.validate_pdf(pdf_path)
-            
+
             # Step 2: Extract metadata
             metadata = await self.extract_metadata(pdf_path)
-            
+
             # Step 3: Extract text
             text_result = await self.extract_text(pdf_path)
-            
+
             return {
                 "validation": validation_result,
                 "metadata": metadata,
@@ -232,7 +229,7 @@ class PDFProcessor:
                 "success": True,
                 "total_processing_time_ms": metadata.get("processing_time_ms", 0) + text_result.get("processing_time_ms", 0)
             }
-            
+
         except Exception as e:
             self.logger.error(f"PDF processing failed: {e}")
             return {

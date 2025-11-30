@@ -2,10 +2,9 @@
 
 import logging
 from enum import Enum
-from typing import Any, Callable
-from uuid import UUID
+from typing import Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +135,10 @@ class ComplianceMonitor:
 
 class RequestComplianceValidator:
     """Validator for incoming request compliance with constitutional principles."""
-    
+
     def __init__(self):
         self.violations: list[dict[str, Any]] = []
-    
+
     def validate_request_structure(self, request: Request, expected_methods: list[str]) -> bool:
         """Validate request structure and method compliance."""
         if request.method not in expected_methods:
@@ -151,7 +150,7 @@ class RequestComplianceValidator:
             })
             return False
         return True
-    
+
     def validate_authentication(self, request: Request) -> bool:
         """Validate authentication compliance."""
         # Check for basic authentication headers
@@ -165,7 +164,7 @@ class RequestComplianceValidator:
             })
             return False
         return True
-    
+
     def validate_content_type(self, request: Request, expected_content_type: str = "application/json") -> bool:
         """Validate content type compliance."""
         content_type = request.headers.get('Content-Type', '')
@@ -178,11 +177,11 @@ class RequestComplianceValidator:
             })
             return False
         return True
-    
+
     def get_violations(self) -> list[dict[str, Any]]:
         """Get all compliance violations."""
         return self.violations
-    
+
     def clear_violations(self):
         """Clear all violations."""
         self.violations = []
@@ -190,37 +189,37 @@ class RequestComplianceValidator:
 
 class ComplianceMiddleware:
     """FastAPI middleware for constitutional compliance checking."""
-    
+
     def __init__(self, app):
         self.app = app
         self.validator = RequestComplianceValidator()
         self.monitor = ComplianceMonitor()
-    
+
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             request = Request(scope, receive)
-            
+
             # Validate request compliance
             self.validator.validate_request_structure(request, ['GET', 'POST', 'PUT', 'DELETE'])
             self.validator.validate_content_type(request)
-            
+
             violations = self.validator.get_violations()
             if violations:
                 # Log violations but don't block the request (progressive enhancement)
                 for violation in violations:
                     logger.warning(f"Compliance violation: {violation}")
-                
+
                 # Add violations to monitor
                 self.monitor.compliance_log.extend(violations)
-            
+
             self.validator.clear_violations()
-        
+
         await self.app(scope, receive, send)
 
 
 def create_compliance_exception_handler():
     """Create a compliance-aware exception handler."""
-    
+
     async def compliance_exception_handler(request: Request, exc: Exception):
         """Handle exceptions with compliance context."""
         compliance_context = {
@@ -229,13 +228,13 @@ def create_compliance_exception_handler():
             'exception_type': type(exc).__name__,
             'exception_message': str(exc)
         }
-        
+
         # Log compliance violation for errors
         if isinstance(exc, HTTPException):
             if exc.status_code >= 400:
                 logger.warning(f"HTTP error compliance violation: {compliance_context}")
-        
+
         # Re-raise the exception (let FastAPI handle it normally)
         raise exc
-    
+
     return compliance_exception_handler

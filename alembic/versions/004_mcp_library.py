@@ -5,9 +5,10 @@ Revises: 83aef568935a_add_user_authentication_tables
 Create Date: 2025-11-29 18:47:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '004_mcp_library'
@@ -33,7 +34,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('name')
     )
-    
+
     # Create mcp_sessions table
     op.create_table('mcp_sessions',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -49,7 +50,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='SET NULL'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create mcp_tool_executions table
     op.create_table('mcp_tool_executions',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -67,7 +68,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['session_id'], ['mcp_sessions.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create mcp_workflows table
     op.create_table('mcp_workflows',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -80,7 +81,7 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create indexes for performance
     op.create_index('ix_mcp_tools_name', 'mcp_tools', ['name'])
     op.create_index('ix_mcp_tools_tags', 'mcp_tools', ['tags'], postgresql_using='gin')

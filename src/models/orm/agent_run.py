@@ -2,16 +2,16 @@
 
 from enum import Enum as PyEnum
 
-from sqlalchemy import Column, String, Text, DateTime, JSON, CheckConstraint, Enum
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, ARRAY
-from sqlalchemy.orm import relationship
+from sqlalchemy import JSON, CheckConstraint, Column, DateTime, Enum, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 
 from .base import BaseEntity
 
 
 class AgentRunStatus(PyEnum):
     """Status of agent runs."""
-    
+
     SUCCESS = "success"
     FAILED = "failed"
     PENDING_REVIEW = "pending_review"
@@ -19,7 +19,7 @@ class AgentRunStatus(PyEnum):
 
 class ReviewStatus(PyEnum):
     """Status of human reviews."""
-    
+
     APPROVED = "approved"
     REJECTED = "rejected"
     NEEDS_REVISION = "needs_revision"
@@ -27,9 +27,9 @@ class ReviewStatus(PyEnum):
 
 class AgentRun(BaseEntity):
     """AgentRun ORM model for audit trails."""
-    
+
     __tablename__ = "agent_runs"
-    
+
     agent_name = Column(String(255), nullable=False)
     agent_version = Column(String(100), nullable=False)
     input_parameters = Column(JSON, nullable=False, server_default='{}')
@@ -41,7 +41,7 @@ class AgentRun(BaseEntity):
     human_reviewer = Column(String(255), nullable=True)
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     review_status = Column(Enum(ReviewStatus, name="review_status"), nullable=True)
-    
+
     __table_args__ = (
         CheckConstraint(
             "status IN ('success', 'failed', 'pending_review')",
@@ -52,6 +52,6 @@ class AgentRun(BaseEntity):
             name="ck_review_status"
         ),
     )
-    
+
     def __repr__(self) -> str:
         return f"<AgentRun(id={self.id}, agent={self.agent_name}, status={self.status})>"

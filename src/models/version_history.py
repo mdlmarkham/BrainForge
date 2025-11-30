@@ -24,7 +24,7 @@ class VersionHistoryBase(ProvenanceMixin):
         """Validate version numbers are sequential."""
         if v < 1:
             raise ValueError("Version must be at least 1")
-        
+
         # Basic validation - can be enhanced with database checks for actual sequence
         return v
 
@@ -34,11 +34,11 @@ class VersionHistoryBase(ProvenanceMixin):
         """Validate content changes are meaningful."""
         if not v or not v.strip():
             raise ValueError("Content cannot be empty")
-        
+
         # Validate content length (basic validation)
         if len(v.strip()) < 5:
             raise ValueError("Content must be at least 5 characters")
-        
+
         return v.strip()
 
     @field_validator('changes')
@@ -47,11 +47,11 @@ class VersionHistoryBase(ProvenanceMixin):
         """Validate changes metadata structure."""
         if not isinstance(v, dict):
             raise ValueError("Changes metadata must be a dictionary")
-        
+
         # Validate required change tracking fields
         if 'timestamp' not in v:
             v['timestamp'] = None  # Will be set during creation
-        
+
         return v
 
     @field_validator('change_reason')
@@ -61,7 +61,7 @@ class VersionHistoryBase(ProvenanceMixin):
         # If change reason is provided, validate it
         if v is not None and not v.strip():
             raise ValueError("Change reason cannot be empty if provided")
-        
+
         return v.strip() if v else None
 
 

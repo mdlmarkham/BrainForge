@@ -1,17 +1,17 @@
 """Research API endpoints for automated content discovery and evaluation."""
 
 import logging
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...models.research_run import ResearchRun, ResearchRunCreate, ResearchRunUpdate
+from ...api.dependencies import CurrentUser, get_db
 from ...models.content_source import ContentSource
-from ...services.research_run_service import ResearchRunService
+from ...models.orm.user import User
+from ...models.research_run import ResearchRun, ResearchRunCreate, ResearchRunUpdate
 from ...services.content_discovery_service import ContentDiscoveryService
-from ...api.dependencies import get_db
+from ...services.research_run_service import ResearchRunService
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +21,11 @@ router = APIRouter(prefix="/research", tags=["research"])
 @router.post("/runs", response_model=ResearchRun, status_code=status.HTTP_201_CREATED)
 async def create_research_run(
     research_run_create: ResearchRunCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
 ) -> ResearchRun:
     """Create a new research run for automated content discovery."""
-    
+
     try:
         research_run_service = ResearchRunService()
         research_run = await research_run_service.create_research_run(
@@ -33,10 +34,10 @@ async def create_research_run(
             research_run_create.created_by,
             research_run_create.research_parameters
         )
-        
+
         logger.info(f"Created research run {research_run.id}")
         return research_run
-        
+
     except Exception as e:
         logger.error(f"Failed to create research run: {e}")
         raise HTTPException(
@@ -48,22 +49,23 @@ async def create_research_run(
 @router.get("/runs/{research_run_id}", response_model=ResearchRun)
 async def get_research_run(
     research_run_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
 ) -> ResearchRun:
     """Get a specific research run by ID."""
-    
+
     try:
         research_run_service = ResearchRunService()
         research_run = await research_run_service.get(db, research_run_id)
-        
+
         if not research_run:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Research run {research_run_id} not found"
             )
-        
+
         return research_run
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -74,20 +76,21 @@ async def get_research_run(
         )
 
 
-@router.get("/runs", response_model=List[ResearchRun])
+@router.get("/runs", response_model=list[ResearchRun])
 async def list_research_runs(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db)
-) -> List[ResearchRun]:
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
+) -> list[ResearchRun]:
     """List research runs with pagination."""
-    
+
     try:
         research_run_service = ResearchRunService()
         research_runs = await research_run_service.list(db, skip, limit)
-        
+
         return research_runs
-        
+
     except Exception as e:
         logger.error(f"Failed to list research runs: {e}")
         raise HTTPException(
@@ -99,29 +102,30 @@ async def list_research_runs(
 @router.post("/runs/{research_run_id}/start", response_model=ResearchRun)
 async def start_research_run(
     research_run_id: UUID,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
 ) -> ResearchRun:
     """Start a research run to begin content discovery."""
-    
+
     try:
         research_run_service = ResearchRunService()
         research_run = await research_run_service.start_research_run(db, research_run_id)
-        
+
         if not research_run:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Research run {research_run_id} not found"
             )
-        
+
         # Start content discovery in background
         content_discovery_service = ContentDiscoveryService()
-        
+
         # This would typically be handled by a background task or queue
         # For now, we'll just log the intent
         logger.info(f"Research run {research_run_id} started - content discovery should begin")
-        
+
         return research_run
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -132,19 +136,20 @@ async def start_research_run(
         )
 
 
-@router.get("/runs/{research_run_id}/sources", response_model=List[ContentSource])
+@router.get("/runs/{research_run_id}/sources", response_model=list[ContentSource])
 async def get_research_run_sources(
     research_run_id: UUID,
-    db: AsyncSession = Depends(get_db)
-) -> List[ContentSource]:
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
+) -> list[ContentSource]:
     """Get content sources discovered by a research run."""
-    
+
     try:
         content_discovery_service = ContentDiscoveryService()
         sources = await content_discovery_service.get_content_sources_for_research_run(db, research_run_id)
-        
+
         return sources
-        
+
     except Exception as e:
         logger.error(f"Failed to get sources for research run {research_run_id}: {e}")
         raise HTTPException(
@@ -153,19 +158,20 @@ async def get_research_run_sources(
         )
 
 
-@router.get("/runs/pending", response_model=List[ResearchRun])
+@router.get("/runs/pending", response_model=list[ResearchRun])
 async def get_pending_research_runs(
     limit: int = 10,
-    db: AsyncSession = Depends(get_db)
-) -> List[ResearchRun]:
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
+) -> list[ResearchRun]:
     """Get pending research runs that need to be processed."""
-    
+
     try:
         research_run_service = ResearchRunService()
         pending_runs = await research_run_service.get_pending_runs(db, limit)
-        
+
         return pending_runs
-        
+
     except Exception as e:
         logger.error(f"Failed to get pending research runs: {e}")
         raise HTTPException(
@@ -174,18 +180,19 @@ async def get_pending_research_runs(
         )
 
 
-@router.get("/runs/running", response_model=List[ResearchRun])
+@router.get("/runs/running", response_model=list[ResearchRun])
 async def get_running_research_runs(
-    db: AsyncSession = Depends(get_db)
-) -> List[ResearchRun]:
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
+) -> list[ResearchRun]:
     """Get currently running research runs."""
-    
+
     try:
         research_run_service = ResearchRunService()
         running_runs = await research_run_service.get_running_runs(db)
-        
+
         return running_runs
-        
+
     except Exception as e:
         logger.error(f"Failed to get running research runs: {e}")
         raise HTTPException(
@@ -198,24 +205,25 @@ async def get_running_research_runs(
 async def update_research_run(
     research_run_id: UUID,
     research_run_update: ResearchRunUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = CurrentUser
 ) -> ResearchRun:
     """Update a research run."""
-    
+
     try:
         research_run_service = ResearchRunService()
         research_run = await research_run_service.update(
             db, research_run_id, research_run_update.model_dump(exclude_unset=True)
         )
-        
+
         if not research_run:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Research run {research_run_id} not found"
             )
-        
+
         return research_run
-        
+
     except HTTPException:
         raise
     except Exception as e:

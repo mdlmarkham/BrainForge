@@ -1,7 +1,6 @@
 """PDF metadata model for BrainForge ingestion pipeline."""
 
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
 from pydantic import ConfigDict, Field, field_validator
@@ -14,11 +13,11 @@ class PDFMetadataBase(TimestampMixin):
 
     ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
     page_count: int = Field(..., ge=1, description="Number of pages in PDF")
-    author: Optional[str] = Field(None, description="Document author from metadata")
-    title: Optional[str] = Field(None, description="Document title from metadata")
-    subject: Optional[str] = Field(None, description="Document subject from metadata")
-    creation_date: Optional[datetime] = Field(None, description="PDF creation date")
-    modification_date: Optional[datetime] = Field(None, description="PDF modification date")
+    author: str | None = Field(None, description="Document author from metadata")
+    title: str | None = Field(None, description="Document title from metadata")
+    subject: str | None = Field(None, description="Document subject from metadata")
+    creation_date: datetime | None = Field(None, description="PDF creation date")
+    modification_date: datetime | None = Field(None, description="PDF modification date")
     pdf_version: str = Field(..., description="PDF version (e.g., '1.4', '1.7')")
     encryption_status: str = Field(..., description="Encryption status ('none', 'password', 'certificate')")
     extraction_method: str = Field(..., description="Text extraction method used ('dockling_basic', 'dockling_advanced')")

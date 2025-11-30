@@ -5,9 +5,9 @@ Revises: 002_add_pdf_processing
 Create Date: 2025-11-29 02:15:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '003_researcher_agent'
@@ -23,32 +23,32 @@ def upgrade() -> None:
             'pending', 'running', 'completed', 'failed', 'cancelled'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE content_source_type AS ENUM (
             'web_article', 'academic_paper', 'news_report', 'blog_post', 'technical_document'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE quality_score_type AS ENUM (
             'credibility', 'relevance', 'freshness', 'completeness', 'overall'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE integration_proposal_status AS ENUM (
             'pending_review', 'approved', 'rejected', 'integrated'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE audit_action_type AS ENUM (
             'research_started', 'content_discovered', 'quality_assessed', 
             'review_assigned', 'review_completed', 'integration_proposed'
         )
     """)
-    
+
     # Create research_runs table
     op.create_table('research_runs',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -72,7 +72,7 @@ def upgrade() -> None:
         sa.CheckConstraint("total_sources_assessed >= 0", name='ck_sources_assessed_positive'),
         sa.CheckConstraint("total_sources_approved >= 0", name='ck_sources_approved_positive')
     )
-    
+
     # Create content_sources_research table (extends existing content_sources)
     op.create_table('content_sources_research',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -94,7 +94,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.CheckConstraint("source_type IN ('web_article', 'academic_paper', 'news_report', 'blog_post', 'technical_document')", name='ck_content_source_type')
     )
-    
+
     # Create quality_assessments table
     op.create_table('quality_assessments',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -112,7 +112,7 @@ def upgrade() -> None:
         sa.CheckConstraint("score_value >= 0.0 AND score_value <= 1.0", name='ck_score_value_range'),
         sa.CheckConstraint("confidence_level >= 0.0 AND confidence_level <= 1.0", name='ck_confidence_level_range')
     )
-    
+
     # Create review_queue_research table (extends existing review_queue)
     op.create_table('review_queue_research',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -129,7 +129,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['content_source_id'], ['content_sources_research.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create integration_proposals table
     op.create_table('integration_proposals',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -150,7 +150,7 @@ def upgrade() -> None:
         sa.CheckConstraint("proposal_status IN ('pending_review', 'approved', 'rejected', 'integrated')", name='ck_integration_proposal_status'),
         sa.CheckConstraint("integration_confidence >= 0.0 AND integration_confidence <= 1.0", name='ck_integration_confidence_range')
     )
-    
+
     # Create research_audit_trail table
     op.create_table('research_audit_trail',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -167,7 +167,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.CheckConstraint("action_type IN ('research_started', 'content_discovered', 'quality_assessed', 'review_assigned', 'review_completed', 'integration_proposed')", name='ck_audit_action_type')
     )
-    
+
     # Create indexes for performance
     op.create_index('idx_research_runs_status', 'research_runs', ['status'])
     op.create_index('idx_research_runs_topic', 'research_runs', ['research_topic'])
@@ -201,7 +201,7 @@ def downgrade() -> None:
     op.drop_index('idx_research_runs_created')
     op.drop_index('idx_research_runs_topic')
     op.drop_index('idx_research_runs_status')
-    
+
     # Drop tables
     op.drop_table('research_audit_trail')
     op.drop_table('integration_proposals')
@@ -209,7 +209,7 @@ def downgrade() -> None:
     op.drop_table('quality_assessments')
     op.drop_table('content_sources_research')
     op.drop_table('research_runs')
-    
+
     # Drop enum types
     op.execute("DROP TYPE IF EXISTS audit_action_type")
     op.execute("DROP TYPE IF EXISTS integration_proposal_status")

@@ -5,9 +5,9 @@ Revises: 001_initial_migration
 Create Date: 2025-11-29 00:00:00.000000
 
 """
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '002_add_pdf_processing'
@@ -23,7 +23,7 @@ def upgrade() -> None:
             'web', 'video', 'text', 'pdf'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE processing_state AS ENUM (
             'validating', 'extracting_metadata', 'extracting_text', 
@@ -31,13 +31,13 @@ def upgrade() -> None:
             'awaiting_review', 'integrated', 'failed'
         )
     """)
-    
+
     op.execute("""
         CREATE TYPE review_status AS ENUM (
             'pending', 'approved', 'rejected', 'needs_revision'
         )
     """)
-    
+
     # Create ingestion_tasks table
     op.create_table('ingestion_tasks',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -52,8 +52,8 @@ def upgrade() -> None:
         sa.Column('tags', sa.ARRAY(sa.Text()), server_default='{}', nullable=False),
         sa.Column('priority', sa.String(length=10), server_default='normal', nullable=False),
         sa.Column('processing_state', sa.Enum(
-            'validating', 'extracting_metadata', 'extracting_text', 
-            'assessing_quality', 'summarizing', 'classifying', 
+            'validating', 'extracting_metadata', 'extracting_text',
+            'assessing_quality', 'summarizing', 'classifying',
             'awaiting_review', 'integrated', 'failed', name='processing_state'
         ), server_default='validating', nullable=False),
         sa.Column('processing_attempts', sa.Integer(), server_default='0', nullable=False),
@@ -64,7 +64,7 @@ def upgrade() -> None:
         sa.CheckConstraint("processing_attempts <= 3", name='ck_max_processing_attempts'),
         sa.CheckConstraint("file_size IS NULL OR file_size <= 104857600", name='ck_max_file_size')  # 100MB
     )
-    
+
     # Create content_sources table
     op.create_table('content_sources',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create processing_results table
     op.create_table('processing_results',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -95,7 +95,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create pdf_metadata table
     op.create_table('pdf_metadata',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -118,7 +118,7 @@ def upgrade() -> None:
         sa.CheckConstraint("extraction_method IN ('dockling_basic', 'dockling_advanced', 'fallback')", name='ck_extraction_method'),
         sa.CheckConstraint("extraction_quality_score >= 0.0 AND extraction_quality_score <= 1.0", name='ck_quality_score_range')
     )
-    
+
     # Create pdf_processing_results table
     op.create_table('pdf_processing_results',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -134,7 +134,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id'),
         sa.CheckConstraint("processing_time_ms >= 0", name='ck_processing_time_positive')
     )
-    
+
     # Create review_queue table
     op.create_table('review_queue',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -149,7 +149,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create audit_trail table
     op.create_table('audit_trail',
         sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
@@ -164,7 +164,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create indexes for performance
     op.create_index('idx_ingestion_tasks_state', 'ingestion_tasks', ['processing_state'])
     op.create_index('idx_ingestion_tasks_type', 'ingestion_tasks', ['content_type'])
@@ -194,7 +194,7 @@ def downgrade() -> None:
     op.drop_index('idx_ingestion_tasks_priority')
     op.drop_index('idx_ingestion_tasks_type')
     op.drop_index('idx_ingestion_tasks_state')
-    
+
     # Drop tables
     op.drop_table('audit_trail')
     op.drop_table('review_queue')
@@ -203,7 +203,7 @@ def downgrade() -> None:
     op.drop_table('processing_results')
     op.drop_table('content_sources')
     op.drop_table('ingestion_tasks')
-    
+
     # Drop enum types
     op.execute("DROP TYPE IF EXISTS review_status")
     op.execute("DROP TYPE IF EXISTS processing_state")

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import ConfigDict, Field
@@ -24,9 +24,9 @@ class ReviewQueueBase(TimestampMixin):
 
     ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
     review_status: ReviewStatus = Field(default=ReviewStatus.PENDING, description="Current review status")
-    reviewer_id: Optional[str] = Field(None, description="ID of human reviewer")
-    reviewed_at: Optional[datetime] = Field(None, description="When content was reviewed")
-    review_notes: Optional[str] = Field(None, description="Reviewer notes and feedback")
+    reviewer_id: str | None = Field(None, description="ID of human reviewer")
+    reviewed_at: datetime | None = Field(None, description="When content was reviewed")
+    review_notes: str | None = Field(None, description="Reviewer notes and feedback")
     priority: int = Field(default=0, description="Review priority (higher = more urgent)")
 
     def model_post_init(self, __context: Any) -> None:

@@ -8,8 +8,8 @@ from pathlib import Path
 # Add the src directory to the Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from alembic.config import Config
 from alembic import command
+from alembic.config import Config
 
 
 def run_migrations() -> int:
@@ -26,7 +26,7 @@ def run_migrations() -> int:
 
     # Create Alembic configuration
     alembic_cfg = Config("alembic.ini")
-    
+
     # Override the database URL in the config
     alembic_cfg.set_main_option("sqlalchemy.url", db_url)
 
@@ -36,7 +36,7 @@ def run_migrations() -> int:
         command.upgrade(alembic_cfg, "head")
         print("✓ Migration completed successfully")
         return 0
-        
+
     except Exception as e:
         print(f"✗ Migration failed: {e}")
         return 1
@@ -45,7 +45,7 @@ def run_migrations() -> int:
 def show_migration_status() -> int:
     """Show current migration status."""
     alembic_cfg = Config("alembic.ini")
-    
+
     try:
         command.current(alembic_cfg)
         return 0
@@ -57,7 +57,7 @@ def show_migration_status() -> int:
 def create_migration(message: str) -> int:
     """Create a new migration script."""
     alembic_cfg = Config("alembic.ini")
-    
+
     try:
         command.revision(alembic_cfg, message=message, autogenerate=True)
         print(f"✓ Migration script created: {message}")
@@ -70,22 +70,22 @@ def create_migration(message: str) -> int:
 def main():
     """Main migration CLI function."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="BrainForge Database Migration CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-    
+
     # Run migrations command
     run_parser = subparsers.add_parser("run", help="Run database migrations")
-    
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Show migration status")
-    
+
     # Create migration command
     create_parser = subparsers.add_parser("create", help="Create a new migration")
     create_parser.add_argument("message", help="Migration description")
-    
+
     args = parser.parse_args()
-    
+
     if args.command == "run":
         return run_migrations()
     elif args.command == "status":

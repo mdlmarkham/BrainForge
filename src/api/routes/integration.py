@@ -1,18 +1,20 @@
 """Integration proposals API endpoints for managing content integration recommendations."""
 
 import logging
-from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...models.integration_proposal import IntegrationProposal, IntegrationProposalCreate, ProposalStatus
-from ...models.content_source import ContentSource
-from ...services.integration_proposal_service import IntegrationProposalService
+from ...api.dependencies import get_db
+from ...models.integration_proposal import (
+    IntegrationProposal,
+    IntegrationProposalCreate,
+    ProposalStatus,
+)
 from ...services.integration.connection_suggester import ConnectionSuggester
 from ...services.integration.tag_suggester import TagSuggester
-from ...api.dependencies import get_db
+from ...services.integration_proposal_service import IntegrationProposalService
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +27,11 @@ async def create_integration_proposal(
     db: AsyncSession = Depends(get_db)
 ) -> IntegrationProposal:
     """Create a new integration proposal."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         return await proposal_service.create(db, proposal)
-        
+
     except Exception as e:
         logger.error(f"Failed to create integration proposal: {e}")
         raise HTTPException(
@@ -45,13 +47,13 @@ async def generate_integration_proposal(
     db: AsyncSession = Depends(get_db)
 ) -> IntegrationProposal:
     """Generate an integration proposal for a content source."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         return await proposal_service.generate_integration_proposal(
             db, content_source_id, research_run_id
         )
-        
+
     except ValueError as e:
         logger.error(f"Content source not found: {e}")
         raise HTTPException(
@@ -66,20 +68,20 @@ async def generate_integration_proposal(
         )
 
 
-@router.get("/proposals", response_model=List[IntegrationProposal])
+@router.get("/proposals", response_model=list[IntegrationProposal])
 async def get_integration_proposals(
-    status: Optional[ProposalStatus] = Query(None, description="Filter by proposal status"),
-    content_source_id: Optional[UUID] = Query(None, description="Filter by content source ID"),
-    research_run_id: Optional[UUID] = Query(None, description="Filter by research run ID"),
+    status: ProposalStatus | None = Query(None, description="Filter by proposal status"),
+    content_source_id: UUID | None = Query(None, description="Filter by content source ID"),
+    research_run_id: UUID | None = Query(None, description="Filter by research run ID"),
     limit: int = Query(50, ge=1, le=100, description="Number of items to return"),
     offset: int = Query(0, ge=0, description="Number of items to skip"),
     db: AsyncSession = Depends(get_db)
-) -> List[IntegrationProposal]:
+) -> list[IntegrationProposal]:
     """Get integration proposals with optional filtering."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
-        
+
         if content_source_id:
             # Get proposal by content source
             proposal = await proposal_service.get_proposal_by_content_source(db, content_source_id)
@@ -93,7 +95,7 @@ async def get_integration_proposals(
             if status:
                 proposals = [p for p in proposals if p.status == status]
             return proposals
-            
+
     except Exception as e:
         logger.error(f"Failed to get integration proposals: {e}")
         raise HTTPException(
@@ -108,19 +110,19 @@ async def get_integration_proposal(
     db: AsyncSession = Depends(get_db)
 ) -> IntegrationProposal:
     """Get a specific integration proposal by ID."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         proposal = await proposal_service.get(db, proposal_id)
-        
+
         if not proposal:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Integration proposal {proposal_id} not found"
             )
-            
+
         return proposal
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -135,25 +137,25 @@ async def get_integration_proposal(
 async def update_proposal_status(
     proposal_id: UUID,
     status: ProposalStatus,
-    implementation_notes: Optional[str] = None,
+    implementation_notes: str | None = None,
     db: AsyncSession = Depends(get_db)
 ) -> IntegrationProposal:
     """Update the status of an integration proposal."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         updated_proposal = await proposal_service.update_proposal_status(
             db, proposal_id, status, implementation_notes
         )
-        
+
         if not updated_proposal:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Integration proposal {proposal_id} not found"
             )
-            
+
         return updated_proposal
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -171,11 +173,11 @@ async def get_proposal_connections(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Get connection suggestions for an integration proposal."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         connection_suggester = ConnectionSuggester()
-        
+
         # Get the proposal
         proposal = await proposal_service.get(db, proposal_id)
         if not proposal:
@@ -183,7 +185,7 @@ async def get_proposal_connections(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Integration proposal {proposal_id} not found"
             )
-        
+
         # Get the content source
         content_source = await proposal_service._get_content_source(db, proposal.content_source_id)
         if not content_source:
@@ -191,24 +193,24 @@ async def get_proposal_connections(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Content source {proposal.content_source_id} not found"
             )
-        
+
         # Get connection suggestions
         connections = await connection_suggester.suggest_connections(
             db, content_source, max_suggestions
         )
-        
+
         # Get connection analysis summary
         connection_analysis = await connection_suggester.get_connection_analysis_summary(
             db, content_source
         )
-        
+
         return {
             "proposal_id": str(proposal_id),
             "content_source_id": str(proposal.content_source_id),
             "connections": connections,
             "analysis": connection_analysis
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -226,11 +228,11 @@ async def get_proposal_tags(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Get tag suggestions for an integration proposal."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         tag_suggester = TagSuggester()
-        
+
         # Get the proposal
         proposal = await proposal_service.get(db, proposal_id)
         if not proposal:
@@ -238,7 +240,7 @@ async def get_proposal_tags(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Integration proposal {proposal_id} not found"
             )
-        
+
         # Get the content source
         content_source = await proposal_service._get_content_source(db, proposal.content_source_id)
         if not content_source:
@@ -246,20 +248,20 @@ async def get_proposal_tags(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Content source {proposal.content_source_id} not found"
             )
-        
+
         # Get tag suggestions
         tags = await tag_suggester.suggest_tags(db, content_source, max_tags)
-        
+
         # Get tag analysis summary
         tag_analysis = await tag_suggester.get_tag_analysis_summary(db, content_source)
-        
+
         return {
             "proposal_id": str(proposal_id),
             "content_source_id": str(proposal.content_source_id),
             "tags": tags,
             "analysis": tag_analysis
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -272,20 +274,20 @@ async def get_proposal_tags(
 
 @router.post("/proposals/batch-generate", response_model=dict)
 async def batch_generate_proposals(
-    content_source_ids: List[UUID],
+    content_source_ids: list[UUID],
     research_run_id: UUID,
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Batch generate integration proposals for multiple content sources."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         results = await proposal_service.batch_generate_proposals(
             db, content_source_ids, research_run_id
         )
-        
+
         return results
-        
+
     except Exception as e:
         logger.error(f"Failed to batch generate integration proposals: {e}")
         raise HTTPException(
@@ -296,15 +298,15 @@ async def batch_generate_proposals(
 
 @router.get("/proposals/statistics", response_model=dict)
 async def get_proposal_statistics(
-    research_run_id: Optional[UUID] = Query(None, description="Filter by research run ID"),
+    research_run_id: UUID | None = Query(None, description="Filter by research run ID"),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Get integration proposal statistics."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         return await proposal_service.get_proposal_statistics(db, research_run_id)
-        
+
     except Exception as e:
         logger.error(f"Failed to get proposal statistics: {e}")
         raise HTTPException(
@@ -313,19 +315,19 @@ async def get_proposal_statistics(
         )
 
 
-@router.get("/implemented", response_model=List[IntegrationProposal])
+@router.get("/implemented", response_model=list[IntegrationProposal])
 async def get_implemented_proposals(
-    research_run_id: Optional[UUID] = Query(None, description="Filter by research run ID"),
+    research_run_id: UUID | None = Query(None, description="Filter by research run ID"),
     limit: int = Query(20, ge=1, le=50, description="Number of items to return"),
     offset: int = Query(0, ge=0, description="Number of items to skip"),
     db: AsyncSession = Depends(get_db)
-) -> List[IntegrationProposal]:
+) -> list[IntegrationProposal]:
     """Get implemented integration proposals."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         return await proposal_service.get_implemented_proposals(db, research_run_id)
-        
+
     except Exception as e:
         logger.error(f"Failed to get implemented proposals: {e}")
         raise HTTPException(
@@ -340,12 +342,12 @@ async def get_integration_analysis(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Get comprehensive integration analysis for a content source."""
-    
+
     try:
         proposal_service = IntegrationProposalService()
         connection_suggester = ConnectionSuggester()
         tag_suggester = TagSuggester()
-        
+
         # Get the content source
         content_source = await proposal_service._get_content_source(db, content_source_id)
         if not content_source:
@@ -353,27 +355,27 @@ async def get_integration_analysis(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Content source {content_source_id} not found"
             )
-        
+
         # Get connection analysis
         connection_analysis = await connection_suggester.get_connection_analysis_summary(
             db, content_source
         )
-        
+
         # Get tag analysis
         tag_analysis = await tag_suggester.get_tag_analysis_summary(db, content_source)
-        
+
         # Check if proposal exists
         existing_proposal = await proposal_service.get_proposal_by_content_source(db, content_source_id)
-        
+
         return {
             "content_source_id": str(content_source_id),
             "content_source_title": content_source.title,
             "existing_proposal": bool(existing_proposal),
             "connection_analysis": connection_analysis,
             "tag_analysis": tag_analysis,
-            "integration_potential": self._assess_integration_potential(connection_analysis, tag_analysis)
+            "integration_potential": _assess_integration_potential(connection_analysis, tag_analysis)
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -384,13 +386,13 @@ async def get_integration_analysis(
         )
 
 
-def _assess_integration_potential(self, connection_analysis: dict, tag_analysis: dict) -> str:
+def _assess_integration_potential(connection_analysis: dict, tag_analysis: dict) -> str:
     """Assess the overall integration potential based on analysis results."""
-    
+
     connection_density = connection_analysis.get("connection_density", "very_low")
     tag_density = tag_analysis.get("tag_density", "very_low")
     avg_connection_strength = connection_analysis.get("average_connection_strength", 0.0)
-    
+
     if connection_density == "high" and tag_density == "high" and avg_connection_strength >= 0.7:
         return "high"
     elif connection_density in ["medium", "high"] and tag_density in ["medium", "high"]:

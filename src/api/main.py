@@ -1,16 +1,34 @@
 """BrainForge AI Knowledge Base - FastAPI main application."""
 
 import asyncio
-import time
+import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from src.compliance.constitution import ComplianceMiddleware, create_compliance_exception_handler
+from src.compliance.constitution import (
+    ComplianceMiddleware,
+    create_compliance_exception_handler,
+)
 
-from .routes import agent, ingestion, notes, search, vault, obsidian, research, quality, auth
+from .middleware.error_handler import create_error_handler_middleware
+from .middleware.input_validation import create_input_validation_middleware
+from .middleware.rate_limit import create_rate_limit_middleware
+from .routes import (
+    agent,
+    auth,
+    gdpr,
+    ingestion,
+    monitoring,
+    notes,
+    obsidian,
+    quality,
+    research,
+    search,
+    vault,
+)
 
 
 class MultipartSecurityMiddleware(BaseHTTPMiddleware):
@@ -105,13 +123,20 @@ def create_app() -> FastAPI:
     # Add compliance middleware
     app.add_middleware(ComplianceMiddleware)
 
-    # Configure CORS
+    # Add security middleware
+    app.add_middleware(create_input_validation_middleware(app))
+    app.add_middleware(create_error_handler_middleware(app, debug_mode=os.getenv("DEBUG", "false").lower() == "true"))
+    app.add_middleware(create_rate_limit_middleware(app))
+
+    # Configure CORS with secure settings
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+        allow_origins=os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+        expose_headers=["Content-Length", "X-Request-ID"],
+        max_age=600,  # 10 minutes
     )
 
     # Add compliance exception handler
@@ -127,6 +152,8 @@ def create_app() -> FastAPI:
     app.include_router(research.router, prefix="/api/v1", tags=["Research"])
     app.include_router(quality.router, prefix="/api/v1", tags=["Quality"])
     app.include_router(auth.router, prefix="/api/v1", tags=["Authentication"])
+    app.include_router(monitoring.router, prefix="/api/v1", tags=["Monitoring"])
+    app.include_router(gdpr.router, prefix="/api/v1", tags=["GDPR"])
 
     # Health check endpoint
     @app.get("/health")

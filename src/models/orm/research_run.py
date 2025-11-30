@@ -1,17 +1,16 @@
 """Research Run ORM model for automated content discovery and evaluation."""
 
-from sqlalchemy import Column, String, Text, JSON, Integer, DateTime, Boolean
-from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
-from sqlalchemy.sql import func
+from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from .base import BaseEntity, ProvenanceMixin
 
 
 class ResearchRun(BaseEntity, ProvenanceMixin):
     """SQLAlchemy ORM model for research_runs table."""
-    
+
     __tablename__ = "research_runs"
-    
+
     research_topic = Column(Text, nullable=False)
     research_parameters = Column(JSONB, nullable=False, server_default='{}')
     status = Column(String(20), nullable=False, server_default='pending')

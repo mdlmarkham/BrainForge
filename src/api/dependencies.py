@@ -1,15 +1,16 @@
 """FastAPI dependencies for BrainForge."""
 
-from typing import AsyncGenerator
+import os
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-import os
+
+from src.models.orm.user import User
+from src.services.auth import AuthService
 
 from ..config.database import db_config
-from src.services.auth import AuthService
-from src.models.orm.user import User
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -19,31 +20,31 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # Service dependencies
-def get_note_service() -> "NoteService":
+def get_note_service():
     """Get note service dependency."""
     from ..services.database import NoteService
     return NoteService()
 
 
-def get_link_service() -> "LinkService":
+def get_link_service():
     """Get link service dependency."""
     from ..services.database import LinkService
     return LinkService()
 
 
-def get_embedding_service() -> "EmbeddingService":
+def get_embedding_service():
     """Get embedding service dependency."""
     from ..services.database import EmbeddingService
     return EmbeddingService()
 
 
-def get_agent_run_service() -> "AgentRunService":
+def get_agent_run_service():
     """Get agent run service dependency."""
     from ..services.database import AgentRunService
     return AgentRunService()
 
 
-def get_version_history_service() -> "VersionHistoryService":
+def get_version_history_service():
     """Get version history service dependency."""
     from ..services.database import VersionHistoryService
     return VersionHistoryService()

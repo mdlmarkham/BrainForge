@@ -3,7 +3,7 @@
 from enum import Enum
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, field_validator, ValidationInfo
+from pydantic import ConfigDict, Field, ValidationInfo, field_validator
 
 from .base import BaseEntity, ProvenanceMixin
 
@@ -52,11 +52,11 @@ class LinkBase(ProvenanceMixin):
         """Validate provenance metadata structure."""
         if not isinstance(v, dict):
             raise ValueError("Provenance must be a dictionary")
-        
+
         # Validate provenance-specific fields
         if 'created_by' not in v:
             raise ValueError("Provenance must include 'created_by' field")
-        
+
         return v
 
 

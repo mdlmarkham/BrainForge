@@ -1,7 +1,6 @@
 """Processing result model for BrainForge ingestion pipeline."""
 
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import ConfigDict, Field
@@ -14,17 +13,17 @@ class ProcessingResultBase(TimestampMixin):
 
     ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
     summary: str = Field(..., description="Automated summary of ingested content")
-    classifications: List[str] = Field(default_factory=list, description="Suggested classifications and tags")
-    connection_suggestions: List[Dict[str, Any]] = Field(
-        default_factory=list, 
+    classifications: list[str] = Field(default_factory=list, description="Suggested classifications and tags")
+    connection_suggestions: list[dict[str, Any]] = Field(
+        default_factory=list,
         description="Suggested connections to existing knowledge"
     )
-    confidence_scores: Dict[str, float] = Field(
-        default_factory=dict, 
+    confidence_scores: dict[str, float] = Field(
+        default_factory=dict,
         description="Confidence scores for automated processing results"
     )
-    processing_metadata: Dict[str, Any] = Field(
-        default_factory=dict, 
+    processing_metadata: dict[str, Any] = Field(
+        default_factory=dict,
         description="Additional processing metadata and intermediate results"
     )
 

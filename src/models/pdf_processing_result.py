@@ -1,7 +1,6 @@
 """PDF processing result model for BrainForge ingestion pipeline."""
 
-from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import UUID
 
 from pydantic import ConfigDict, Field
@@ -14,12 +13,12 @@ class PDFProcessingResultBase(TimestampMixin):
 
     ingestion_task_id: UUID = Field(..., description="Reference to parent IngestionTask")
     extracted_text: str = Field(..., description="Full text extracted from PDF")
-    text_quality_metrics: Dict[str, Any] = Field(
-        default_factory=dict, 
+    text_quality_metrics: dict[str, Any] = Field(
+        default_factory=dict,
         description="Quality metrics (character count, word count, extraction confidence)"
     )
-    section_breaks: Dict[str, Any] = Field(
-        default_factory=dict, 
+    section_breaks: dict[str, Any] = Field(
+        default_factory=dict,
         description="Document structure (page breaks, section headers)"
     )
     processing_time_ms: int = Field(..., ge=0, description="Processing time in milliseconds")

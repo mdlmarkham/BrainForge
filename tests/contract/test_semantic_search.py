@@ -3,25 +3,28 @@
 These tests validate the API contracts for the implemented semantic search functionality.
 """
 
+import uuid
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any, List
-import json
-import uuid
 
 from src.api.main import create_app
-from src.models.search import SearchRequest, SearchResponse, SearchResult, SearchStats, SearchHealth
+from src.models.search import (
+    SearchRequest,
+    SearchResponse,
+    SearchResult,
+)
 
 
 class TestSemanticSearchContract:
     """Test semantic search API contract compliance."""
-    
+
     def setup_method(self):
         """Set up test client with mocked dependencies."""
         self.app = create_app()
         self.client = TestClient(self.app)
-    
+
     @patch('src.api.routes.search.get_database_service')
     @patch('src.api.routes.search.EmbeddingGenerator')
     @patch('src.api.routes.search.VectorStore')
@@ -33,25 +36,25 @@ class TestSemanticSearchContract:
         mock_search_instance = AsyncMock()
         mock_search_instance.semantic_search.return_value = []
         mock_semantic_search.return_value = mock_search_instance
-        
+
         # Test that POST /api/v1/search endpoint exists
         response = self.client.post("/api/v1/search", json={
             "query": "test query"
         })
-        
+
         # Should not get 404 (endpoint exists)
         assert response.status_code != 404, "Search endpoint does not exist"
-    
+
     def test_search_request_schema_validation(self):
         """Test search request schema validation."""
         # Test required field validation
         response = self.client.post("/api/v1/search", json={})
         assert response.status_code == 422, "Empty request should be rejected"
-        
+
         # Test query field validation
         response = self.client.post("/api/v1/search", json={"query": ""})
         assert response.status_code == 422, "Empty query should be rejected"
-        
+
         # Test valid request
         response = self.client.post("/api/v1/search", json={
             "query": "valid query",
@@ -60,7 +63,7 @@ class TestSemanticSearchContract:
         })
         # Should not get validation error for valid request
         assert response.status_code != 422, "Valid request should not be rejected"
-    
+
     @patch('src.api.routes.search.get_database_service')
     @patch('src.api.routes.search.EmbeddingGenerator')
     @patch('src.api.routes.search.VectorStore')
@@ -84,30 +87,30 @@ class TestSemanticSearchContract:
             }
         ]
         mock_semantic_search.return_value = mock_search_instance
-        
+
         response = self.client.post("/api/v1/search", json={
             "query": "test query"
         })
-        
+
         if response.status_code == 200:
             data = response.json()
             # Check required response fields
             required_fields = ["results", "total_results", "query_time_ms", "search_type", "query"]
             for field in required_fields:
                 assert field in data, f"Response missing required field: {field}"
-    
+
     def test_search_stats_endpoint_exists(self):
         """Test that search stats endpoint exists."""
         response = self.client.get("/api/v1/search/stats")
         # Should not get 404 (endpoint exists)
         assert response.status_code != 404, "Search stats endpoint does not exist"
-    
+
     def test_search_health_endpoint_exists(self):
         """Test that search health endpoint exists."""
         response = self.client.get("/api/v1/search/health")
         # Should not get 404 (endpoint exists)
         assert response.status_code != 404, "Search health endpoint does not exist"
-    
+
     def test_similar_notes_endpoint_exists(self):
         """Test that similar notes endpoint exists."""
         test_note_id = str(uuid.uuid4())
@@ -118,20 +121,20 @@ class TestSemanticSearchContract:
 
 class TestSearchRequestValidation:
     """Test search request validation rules."""
-    
+
     def setup_method(self):
         """Set up test client."""
         self.app = create_app()
         self.client = TestClient(self.app)
-    
+
     def test_empty_query_rejection(self):
         """Test that empty queries are rejected."""
         response = self.client.post("/api/v1/search", json={"query": ""})
         assert response.status_code == 422, "Empty query should be rejected"
-        
+
         response = self.client.post("/api/v1/search", json={"query": "   "})
         assert response.status_code == 422, "Whitespace-only query should be rejected"
-    
+
     def test_invalid_limit_rejection(self):
         """Test that invalid limits are rejected."""
         # Test limit below minimum
@@ -140,14 +143,14 @@ class TestSearchRequestValidation:
             "limit": 0
         })
         assert response.status_code == 422, "Limit below 1 should be rejected"
-        
+
         # Test limit above maximum
         response = self.client.post("/api/v1/search", json={
             "query": "test",
             "limit": 101
         })
         assert response.status_code == 422, "Limit above 100 should be rejected"
-    
+
     def test_invalid_similarity_threshold_rejection(self):
         """Test that invalid similarity thresholds are rejected."""
         # Test threshold below minimum
@@ -156,7 +159,7 @@ class TestSearchRequestValidation:
             "similarity_threshold": -0.1
         })
         assert response.status_code == 422, "Similarity threshold below 0 should be rejected"
-        
+
         # Test threshold above maximum
         response = self.client.post("/api/v1/search", json={
             "query": "test",
@@ -167,7 +170,7 @@ class TestSearchRequestValidation:
 
 class TestSearchModels:
     """Test search model validation."""
-    
+
     def test_search_request_model(self):
         """Test SearchRequest model validation."""
         # Valid request
@@ -179,15 +182,15 @@ class TestSearchModels:
         assert valid_request.query == "test query"
         assert valid_request.limit == 10
         assert valid_request.similarity_threshold == 0.7
-        
+
         # Test empty query validation
         with pytest.raises(ValueError):
             SearchRequest(query="")
-        
+
         # Test whitespace-only query validation
         with pytest.raises(ValueError):
             SearchRequest(query="   ")
-    
+
     def test_search_result_model(self):
         """Test SearchResult model validation."""
         test_note_id = uuid.uuid4()
@@ -199,12 +202,12 @@ class TestSearchModels:
             metadata={"key": "value"},
             version=1
         )
-        
+
         assert result.note_id == test_note_id
         assert result.content == "Test content"
         assert result.similarity_score == 0.85
         assert result.metadata == {"key": "value"}
-    
+
     def test_search_response_model(self):
         """Test SearchResponse model validation."""
         test_note_id = uuid.uuid4()
@@ -218,7 +221,7 @@ class TestSearchModels:
                 version=1
             )
         ]
-        
+
         response = SearchResponse(
             results=results,
             total_results=1,
@@ -226,7 +229,7 @@ class TestSearchModels:
             search_type="semantic",
             query="test query"
         )
-        
+
         assert len(response.results) == 1
         assert response.total_results == 1
         assert response.query_time_ms == 150.5

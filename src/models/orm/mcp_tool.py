@@ -1,18 +1,19 @@
 """MCP Tool ORM Model"""
 
-from sqlalchemy import Column, String, Text, Boolean, DateTime, ARRAY
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.sql import func
 from uuid import uuid4
+
+from sqlalchemy import ARRAY, Boolean, Column, DateTime, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.sql import func
 
 from src.models.orm.base import Base
 
 
 class MCPTool(Base):
     """MCP Tool ORM model representing tool definitions."""
-    
+
     __tablename__ = "mcp_tools"
-    
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String(255), nullable=False, unique=True, index=True)
     description = Column(Text, nullable=False)
@@ -24,10 +25,10 @@ class MCPTool(Base):
     constitutional_gates = Column(ARRAY(String), nullable=True, default=[])
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-    
+
     def __repr__(self):
         return f"<MCPTool(id={self.id}, name='{self.name}', is_active={self.is_active})>"
-    
+
     def to_dict(self):
         """Convert model to dictionary for serialization."""
         return {

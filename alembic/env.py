@@ -4,12 +4,10 @@ import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 
 # Import all ORM models to ensure they are registered with Base
-from src.models.orm import note, embedding, link, agent_run, version_history
 from src.models.orm.base import Base
 
 # this is the Alembic Config object, which provides
@@ -36,11 +34,11 @@ def get_url():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL environment variable is required")
-    
+
     # Convert sync URL to async URL if needed
     if database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    
+
     return database_url
 
 
@@ -77,7 +75,7 @@ def run_migrations_online() -> None:
     """
     configuration = config.get_section(config.config_ini_section)
     configuration["sqlalchemy.url"] = get_url()
-    
+
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

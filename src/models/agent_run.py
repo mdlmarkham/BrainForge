@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from .base import BaseEntity
 
@@ -50,20 +50,20 @@ class AgentRunBase(BaseModel):
             review_status = info.data.get('review_status')
             human_reviewer = info.data.get('human_reviewer')
             reviewed_at = info.data.get('reviewed_at')
-            
+
             # Validate status transitions
             if current_status == AgentRunStatus.PENDING_REVIEW:
                 if review_status is not None:
                     raise ValueError("Cannot set review status while run is pending review")
-            
+
             elif current_status == AgentRunStatus.SUCCESS:
                 if review_status not in [ReviewStatus.APPROVED, None]:
                     raise ValueError("Successful runs must be approved or have no review")
-            
+
             elif current_status == AgentRunStatus.FAILED:
                 if review_status is not None:
                     raise ValueError("Failed runs cannot have review status")
-        
+
         elif info.field_name == 'review_status':
             if v is not None:
                 human_reviewer = info.data.get('human_reviewer')
@@ -72,7 +72,7 @@ class AgentRunBase(BaseModel):
                     raise ValueError("Review status requires a human reviewer")
                 if not reviewed_at:
                     raise ValueError("Review status requires a review timestamp")
-        
+
         return v
 
     @field_validator('agent_version')
@@ -81,13 +81,13 @@ class AgentRunBase(BaseModel):
         """Validate agent version follows semantic versioning."""
         if not v or not v.strip():
             raise ValueError("Agent version cannot be empty")
-        
+
         # Basic semantic version validation
         import re
         semver_pattern = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$'
         if not re.match(semver_pattern, v.strip()):
             raise ValueError("Agent version must follow semantic versioning format (e.g., 1.0.0)")
-        
+
         return v.strip()
 
     @field_validator('input_parameters')
@@ -96,14 +96,14 @@ class AgentRunBase(BaseModel):
         """Validate input parameters structure."""
         if not isinstance(v, dict):
             raise ValueError("Input parameters must be a dictionary")
-        
+
         # Validate input parameters are JSON-serializable
         import json
         try:
             json.dumps(v)
         except (TypeError, ValueError) as e:
             raise ValueError(f"Input parameters must be JSON-serializable: {e}")
-        
+
         return v
 
     @field_validator('output_note_ids')
@@ -112,12 +112,12 @@ class AgentRunBase(BaseModel):
         """Validate output note IDs are valid UUIDs."""
         if not isinstance(v, list):
             raise ValueError("Output note IDs must be a list")
-        
+
         # Validate all elements are UUIDs
         for note_id in v:
             if not isinstance(note_id, UUID):
                 raise ValueError("All output note IDs must be valid UUIDs")
-        
+
         return v
 
 

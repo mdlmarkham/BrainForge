@@ -1,13 +1,21 @@
 """Obsidian API routes for BrainForge integration with Obsidian Local REST API."""
 
-from typing import List, Optional
 import os
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
 
-from src.services.obsidian import ObsidianService, ObsidianNote, ObsidianServerInfo, ObsidianCommand
-from src.config.database import db_config
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.config.database import db_config
+from src.models.orm.user import User
+from src.services.obsidian import (
+    ObsidianCommand,
+    ObsidianNote,
+    ObsidianServerInfo,
+    ObsidianService,
+)
+
+from ..dependencies import CurrentUser
 
 router = APIRouter(prefix="/obsidian", tags=["obsidian"])
 
@@ -15,45 +23,45 @@ router = APIRouter(prefix="/obsidian", tags=["obsidian"])
 class NoteRequest(BaseModel):
     """Request model for note operations."""
     filename: str
-    content: Optional[str] = None
+    content: str | None = None
     as_json: bool = False
 
 
 class NoteResponse(BaseModel):
     """Response model for note operations."""
     success: bool
-    note: Optional[ObsidianNote] = None
-    message: Optional[str] = None
+    note: ObsidianNote | None = None
+    message: str | None = None
 
 
 class ServerInfoResponse(BaseModel):
     """Response model for server info."""
     success: bool
-    info: Optional[ObsidianServerInfo] = None
-    message: Optional[str] = None
+    info: ObsidianServerInfo | None = None
+    message: str | None = None
 
 
 class VaultFilesResponse(BaseModel):
     """Response model for vault files listing."""
     success: bool
-    files: List[str] = []
-    message: Optional[str] = None
+    files: list[str] = []
+    message: str | None = None
 
 
 class CommandsResponse(BaseModel):
     """Response model for available commands."""
     success: bool
-    commands: List[ObsidianCommand] = []
-    message: Optional[str] = None
+    commands: list[ObsidianCommand] = []
+    message: str | None = None
 
 
 class PeriodicNoteRequest(BaseModel):
     """Request model for periodic note operations."""
     period: str
     content: str
-    year: Optional[int] = None
-    month: Optional[int] = None
-    day: Optional[int] = None
+    year: int | None = None
+    month: int | None = None
+    day: int | None = None
 
 
 async def get_obsidian_service() -> ObsidianService:
@@ -65,7 +73,8 @@ async def get_obsidian_service() -> ObsidianService:
 
 @router.get("/server", response_model=ServerInfoResponse)
 async def get_obsidian_server_info(
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> ServerInfoResponse:
     """
     Get Obsidian server information and authentication status.
@@ -84,7 +93,8 @@ async def get_obsidian_server_info(
 async def get_obsidian_note(
     filename: str,
     as_json: bool = False,
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> NoteResponse:
     """
     Get a note from Obsidian vault.
@@ -107,7 +117,8 @@ async def get_obsidian_note(
 async def create_or_append_note(
     filename: str,
     request: NoteRequest,
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> NoteResponse:
     """
     Create or append to a note in Obsidian vault.
@@ -132,7 +143,8 @@ async def create_or_append_note(
 @router.get("/active", response_model=NoteResponse)
 async def get_active_note(
     as_json: bool = False,
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> NoteResponse:
     """
     Get the currently active note in Obsidian.
@@ -156,7 +168,8 @@ async def get_active_note(
 @router.post("/active", response_model=NoteResponse)
 async def append_to_active_note(
     request: NoteRequest,
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> NoteResponse:
     """
     Append content to the currently active note.
@@ -180,7 +193,8 @@ async def append_to_active_note(
 @router.get("/vault", response_model=VaultFilesResponse)
 async def list_vault_files(
     directory: str = '',
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> VaultFilesResponse:
     """
     List files in a directory of the Obsidian vault.
@@ -200,7 +214,8 @@ async def list_vault_files(
 
 @router.get("/commands", response_model=CommandsResponse)
 async def get_available_commands(
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> CommandsResponse:
     """
     Get available Obsidian commands.
@@ -218,7 +233,8 @@ async def get_available_commands(
 @router.post("/periodic", response_model=NoteResponse)
 async def create_periodic_note(
     request: PeriodicNoteRequest,
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ) -> NoteResponse:
     """
     Create or append to a periodic note.
@@ -245,7 +261,8 @@ async def create_periodic_note(
 @router.post("/sync")
 async def sync_with_obsidian(
     db: AsyncSession = Depends(db_config.get_session),
-    obsidian_service: ObsidianService = Depends(get_obsidian_service)
+    obsidian_service: ObsidianService = Depends(get_obsidian_service),
+    current_user: User = CurrentUser
 ):
     """
     Sync BrainForge database with Obsidian vault.
@@ -263,7 +280,7 @@ async def sync_with_obsidian(
     try:
         # Get vault files
         files = await obsidian_service.list_vault_files()
-        
+
         # For now, return basic sync information
         return {
             "success": True,

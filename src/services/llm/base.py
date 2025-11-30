@@ -121,7 +121,7 @@ class LLMProvider(ABC):
 
 class LLMError(Exception):
     """Base exception for all LLM-related errors."""
-    
+
     def __init__(self, message: str, provider_type: str = "unknown", operation: str = "unknown"):
         super().__init__(message)
         self.provider_type = provider_type

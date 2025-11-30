@@ -1,6 +1,7 @@
-from uuid import UUID
-from pydantic import BaseModel, EmailStr, validator
 import re
+from uuid import UUID
+
+from pydantic import BaseModel, EmailStr, validator
 
 
 class UserCreate(BaseModel):
