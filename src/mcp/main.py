@@ -1,6 +1,5 @@
 """BrainForge MCP Server Main Entry Point"""
 
-import asyncio
 import logging
 import os
 
@@ -14,13 +13,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main():
+def main():
     """Main entry point for the BrainForge MCP server"""
 
     # Get database URL from environment or use default
     database_url = os.getenv(
         "DATABASE_URL",
-        "postgresql://brainforge:brainforge@localhost:5432/brainforge"
+        "postgresql+asyncpg://brainforge:brainforge@localhost:5432/brainforge"
     )
 
     # Get server configuration
@@ -35,8 +34,8 @@ async def main():
         # Create MCP server instance
         mcp_server = create_mcp_server(database_url)
 
-        # Run the server
-        await mcp_server.run_server(host=host, port=port)
+        # Run the server - FastMCP manages its own event loop
+        mcp_server.run_server(host=host, port=port)
 
     except Exception as e:
         logger.error(f"Failed to start MCP server: {e}")
@@ -44,4 +43,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

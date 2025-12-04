@@ -1,14 +1,16 @@
 """Unit tests for MCP tools"""
 
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 import pytest
 
-from src.mcp.tools.export import ExportTools
-from src.mcp.tools.notes import NoteTools
-from src.mcp.tools.search import SearchTools
-from src.mcp.tools.workflows import WorkflowTools
+# Mock the missing dependency before importing MCP tools
+with patch.dict('sys.modules', {'spiffworkflow_backend': Mock()}):
+    from src.mcp.tools.export import ExportTools
+    from src.mcp.tools.notes import NoteTools
+    from src.mcp.tools.search import SearchTools
+    from src.mcp.tools.workflows import WorkflowTools
 
 
 class TestSearchTools:

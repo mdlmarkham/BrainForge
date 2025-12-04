@@ -10,7 +10,7 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...models.research_run import ResearchRun, ResearchRunStatus
-from ...services.audit.research_audit import AuditEventType, research_audit_logger
+from ...services.audit.research_audit import research_audit_logger
 from ...services.research_run_service import ResearchRunService
 
 logger = logging.getLogger(__name__)

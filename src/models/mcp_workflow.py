@@ -10,19 +10,25 @@ from pydantic import BaseModel, Field, validator
 class MCPWorkflowBase(BaseModel):
     """Base MCP workflow model."""
 
-    workflow_definition: dict[str, Any] = Field(..., description="SpiffWorkflow BPMN definition")
-    tool_mappings: dict[str, Any] = Field(..., description="MCP tool to workflow task mappings")
+    workflow_type: str = Field(..., description="Type of workflow")
+    workflow_definition: dict[str, Any] = Field(default_factory=dict, description="SpiffWorkflow BPMN definition")
+    tool_mappings: dict[str, Any] = Field(default_factory=dict, description="MCP tool to workflow task mappings")
     constitutional_gates: list[str] = Field(default=[], description="Workflow-specific constitutional gates")
     is_active: bool = Field(default=True, description="Workflow activation status")
     version: int = Field(default=1, ge=1, description="Workflow version")
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Workflow parameters")
+    status: str = Field(default="initializing", description="Workflow status")
+    priority: str = Field(default="normal", description="Workflow priority")
+    current_step: str | None = Field(default=None, description="Current workflow step")
+    progress: float = Field(default=0.0, ge=0.0, le=1.0, description="Workflow progress percentage")
+    result: dict[str, Any] | None = Field(default=None, description="Workflow result")
+    error_message: str | None = Field(default=None, description="Workflow error message")
 
     @validator('workflow_definition')
     def validate_workflow_definition(cls, v):
         """Validate workflow definition format."""
         if not isinstance(v, dict):
             raise ValueError('Workflow definition must be a dictionary')
-        if 'process' not in v:
-            raise ValueError('Workflow definition must include process definition')
         return v
 
     @validator('tool_mappings')
@@ -37,6 +43,13 @@ class MCPWorkflowBase(BaseModel):
         """Validate version number."""
         if v < 1:
             raise ValueError('Version must be at least 1')
+        return v
+
+    @validator('progress')
+    def validate_progress(cls, v):
+        """Validate progress percentage."""
+        if v < 0.0 or v > 1.0:
+            raise ValueError('Progress must be between 0.0 and 1.0')
         return v
 
 

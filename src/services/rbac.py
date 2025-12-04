@@ -1,6 +1,7 @@
 """Role-Based Access Control (RBAC) service for BrainForge."""
 
 import logging
+import os
 from typing import Any
 from uuid import UUID
 
@@ -23,11 +24,13 @@ from src.services.sqlalchemy_service import SQLAlchemyService
 logger = logging.getLogger(__name__)
 
 
-class RBACService(SQLAlchemyService[UserRoleResponse]):
+class RBACService(SQLAlchemyService):
     """Service for managing role-based access control."""
     
-    def __init__(self):
-        super().__init__(UserRoleResponse)
+    def __init__(self, database_url: str = None):
+        if database_url is None:
+            database_url = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///:memory:')
+        super().__init__(database_url, object, UserRoleResponse)
     
     async def assign_role(
         self,
@@ -332,16 +335,29 @@ class PermissionMiddleware:
         return True
 
 
-# Global RBAC service instance
-rbac_service = RBACService()
-permission_middleware = PermissionMiddleware(rbac_service)
+# Global RBAC service instance (lazy initialization)
+_rbac_service = None
+_permission_middleware = None
 
 
 def get_rbac_service() -> RBACService:
     """Get RBAC service dependency."""
-    return rbac_service
+    global _rbac_service
+    if _rbac_service is None:
+        # Use environment variable for database URL or fallback to sync SQLite for tests
+        database_url = os.getenv('DATABASE_URL', 'sqlite:///:memory:')
+        # For async operations, ensure we use async driver
+        if database_url.startswith('sqlite://') and not database_url.startswith('sqlite+aiosqlite://'):
+            database_url = database_url.replace('sqlite://', 'sqlite+aiosqlite://')
+        elif database_url.startswith('postgresql://') and not database_url.startswith('postgresql+asyncpg://'):
+            database_url = database_url.replace('postgresql://', 'postgresql+asyncpg://')
+        _rbac_service = RBACService(database_url)
+    return _rbac_service
 
 
 def get_permission_middleware() -> PermissionMiddleware:
     """Get permission middleware dependency."""
-    return permission_middleware
+    global _permission_middleware
+    if _permission_middleware is None:
+        _permission_middleware = PermissionMiddleware(get_rbac_service())
+    return _permission_middleware

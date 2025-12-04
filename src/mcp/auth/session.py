@@ -3,9 +3,9 @@
 import logging
 from uuid import UUID
 
-from ...models.mcp_execution import MCPExecution, MCPExecutionCreate, MCPExecutionUpdate
-from ...models.mcp_session import MCPSession, MCPSessionCreate, MCPSessionUpdate
-from ...services.database import DatabaseService
+from src.models.mcp_execution import MCPExecution, MCPExecutionCreate, MCPExecutionUpdate
+from src.models.mcp_session import MCPSession, MCPSessionCreate, MCPSessionUpdate
+from src.services.sqlalchemy_service import DatabaseService
 
 
 class SessionManager:

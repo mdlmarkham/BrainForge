@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.orm.agent_run import AgentRun
+from ..models.orm.agent_run import AgentRunORM as AgentRun
 from ..models.orm.embedding import Embedding
 from ..models.orm.link import Link
 from ..models.orm.note import Note

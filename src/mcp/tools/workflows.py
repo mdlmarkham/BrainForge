@@ -6,9 +6,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from ...mcp.workflows.integration import WorkflowOrchestrator
-from ...models.mcp_workflow import MCPWorkflow, MCPWorkflowCreate
-from ...services.database import DatabaseService
+from src.mcp.workflows.integration import WorkflowOrchestrator
+from src.models.mcp_workflow import MCPWorkflow, MCPWorkflowCreate
+from src.services.generic_database_service import DatabaseService
 
 
 class WorkflowStartRequest(BaseModel):
@@ -56,10 +56,12 @@ class WorkflowTools:
                     "status": "failed"
                 }
 
-            # Create workflow record
+            # Create workflow record with proper BPMN definition structure
+            bpmn_template = self._get_bpmn_template(workflow_type)
             workflow_create = MCPWorkflowCreate(
                 workflow_type=workflow_type,
-                bpmn_definition=self._get_bpmn_template(workflow_type),
+                workflow_definition=bpmn_template,
+                tool_mappings={},  # Empty for now, can be populated later
                 parameters=parameters or {},
                 status="initializing",
                 priority=priority
@@ -220,37 +222,43 @@ class WorkflowTools:
 
         templates = {
             "research_discovery": {
-                "process_id": "research_discovery",
-                "name": "Research Discovery Workflow",
-                "steps": [
-                    "topic_analysis",
-                    "source_discovery",
-                    "content_ingestion",
-                    "semantic_analysis",
-                    "connection_mapping",
-                    "report_generation"
+                "process": {
+                    "id": "research_discovery",
+                    "name": "Research Discovery Workflow"
+                },
+                "tasks": [
+                    {"id": "topic_analysis", "name": "Topic Analysis"},
+                    {"id": "source_discovery", "name": "Source Discovery"},
+                    {"id": "content_ingestion", "name": "Content Ingestion"},
+                    {"id": "semantic_analysis", "name": "Semantic Analysis"},
+                    {"id": "connection_mapping", "name": "Connection Mapping"},
+                    {"id": "report_generation", "name": "Report Generation"}
                 ]
             },
             "content_analysis": {
-                "process_id": "content_analysis",
-                "name": "Content Analysis Workflow",
-                "steps": [
-                    "content_parsing",
-                    "semantic_embedding",
-                    "quality_assessment",
-                    "relevance_scoring",
-                    "summary_generation"
+                "process": {
+                    "id": "content_analysis",
+                    "name": "Content Analysis Workflow"
+                },
+                "tasks": [
+                    {"id": "content_parsing", "name": "Content Parsing"},
+                    {"id": "semantic_embedding", "name": "Semantic Embedding"},
+                    {"id": "quality_assessment", "name": "Quality Assessment"},
+                    {"id": "relevance_scoring", "name": "Relevance Scoring"},
+                    {"id": "summary_generation", "name": "Summary Generation"}
                 ]
             },
             "connection_mapping": {
-                "process_id": "connection_mapping",
-                "name": "Connection Mapping Workflow",
-                "steps": [
-                    "note_analysis",
-                    "semantic_comparison",
-                    "connection_scoring",
-                    "link_creation",
-                    "visualization_generation"
+                "process": {
+                    "id": "connection_mapping",
+                    "name": "Connection Mapping Workflow"
+                },
+                "tasks": [
+                    {"id": "note_analysis", "name": "Note Analysis"},
+                    {"id": "semantic_comparison", "name": "Semantic Comparison"},
+                    {"id": "connection_scoring", "name": "Connection Scoring"},
+                    {"id": "link_creation", "name": "Link Creation"},
+                    {"id": "visualization_generation", "name": "Visualization Generation"}
                 ]
             }
         }

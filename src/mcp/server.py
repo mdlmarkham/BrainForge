@@ -8,7 +8,7 @@ from fastmcp import FastMCP
 
 from ..models.mcp_execution import MCPExecution, MCPExecutionCreate
 from ..models.mcp_session import MCPSession, MCPSessionCreate
-from ..services.database import DatabaseService
+from ..services.generic_database_service import DatabaseService
 from .auth.session import SessionManager
 from .tools.export import ExportTools
 from .tools.notes import NoteTools
@@ -164,10 +164,13 @@ class BrainForgeMCP:
         tool_function = tool_mapping[tool_name]
         return await tool_function(**parameters)
 
-    async def run_server(self, host: str = "localhost", port: int = 8000):
-        """Run the MCP server"""
+    def run_server(self, host: str = "localhost", port: int = 8000):
+        """Run the MCP server as an HTTP server"""
         self.logger.info(f"Starting BrainForge MCP server on {host}:{port}")
-        await self.mcp_server.run(host=host, port=port)
+        
+        # FastMCP servers need to be run with HTTP transport for host/port support
+        # The run() method with transport="http" handles the event loop properly
+        self.mcp_server.run(transport="http", host=host, port=port)
 
 
 # Factory function for creating the MCP server

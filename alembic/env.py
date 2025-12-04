@@ -2,8 +2,13 @@
 
 import os
 from logging.config import fileConfig
+from dotenv import load_dotenv
 
-from sqlalchemy import engine_from_config, pool
+# Load environment variables from .env file
+load_dotenv()
+
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 
@@ -34,6 +39,9 @@ def get_url():
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL environment variable is required")
+
+    # Strip any leading/trailing whitespace
+    database_url = database_url.strip()
 
     # Convert sync URL to async URL if needed
     if database_url.startswith("postgresql://"):
@@ -73,22 +81,32 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = get_url()
+    import asyncio
+    from sqlalchemy.ext.asyncio import AsyncConnection
 
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    async def run_async_migrations():
+        """Run migrations in an async context."""
+        configuration = config.get_section(config.config_ini_section)
+        configuration["sqlalchemy.url"] = get_url()
 
-    with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
+        connectable = create_async_engine(
+            configuration["sqlalchemy.url"],
+            poolclass=pool.NullPool,
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        async with connectable.connect() as connection:
+            await connection.run_sync(
+                lambda sync_conn: context.configure(
+                    connection=sync_conn, target_metadata=target_metadata
+                )
+            )
+
+            async with connection.begin() as transaction:
+                await connection.run_sync(lambda conn: context.run_migrations())
+                await transaction.commit()
+
+    # Run the async migrations
+    asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():

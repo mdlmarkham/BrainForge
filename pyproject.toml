@@ -52,11 +52,33 @@ dev = [
     "black>=23.0.0",
     "mypy>=1.0.0",
     "pre-commit>=3.0.0",
+    "bandit>=1.7.0",
+    "safety>=2.0.0",
+    "radon>=5.1.0",
+    "mccabe>=0.7.0",
+    "flake8-duplication>=1.1.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "coverage>=7.0.0",
+    "pytest-html>=4.0.0",
+    "pytest-json-report>=1.5.0",
 ]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-xdist>=3.0.0",
+]
+security = [
+    "bandit>=1.7.0",
+    "safety>=2.0.0",
+    "detect-secrets>=1.0.0",
+]
+quality = [
+    "radon>=5.1.0",
+    "mccabe>=0.7.0",
+    "flake8-duplication>=1.1.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -139,11 +161,49 @@ addopts = [
     "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=80",
+    "-n", "auto",
 ]
 markers = [
     "unit: unit tests",
     "integration: integration tests",
     "contract: contract tests",
     "performance: performance tests",
+    "benchmark: benchmark tests",
 ]
 asyncio_mode = "auto"
+minversion = "7.0"
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/migrations/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\b",
+]
+
+[tool.radon]
+max_complexity = 10
+exclude = "tests/*,alembic/*,venv/*,.venv/*"
+
+[tool.bandit]
+exclude_dirs = ["tests", "alembic", "venv", ".venv"]
+skips = ["B101", "B105"]
+
+[tool.mccabe]
+max-complexity = 10

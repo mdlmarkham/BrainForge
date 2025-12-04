@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = '004_mcp_library'
-down_revision = '83aef568935a_add_user_authentication_tables'
+down_revision = '83aef568935a'
 branch_labels = None
 depends_on = None
 

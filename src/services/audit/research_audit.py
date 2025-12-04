@@ -9,10 +9,11 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...models.research_audit_trail import (
-    AuditEventType,
+    AuditActionType,
     ResearchAuditTrail,
     ResearchAuditTrailCreate,
 )
+from ...config.database import DatabaseConfig
 from ...services.sqlalchemy_service import SQLAlchemyService
 
 logger = logging.getLogger(__name__)
@@ -26,17 +27,22 @@ class AuditLevel(Enum):
     CRITICAL = "critical"
 
 
-class ResearchAuditService(SQLAlchemyService[ResearchAuditTrail]):
+class ResearchAuditService(SQLAlchemyService):
     """Service for managing research audit trails."""
 
     def __init__(self):
-        super().__init__(ResearchAuditTrail)
+        database_config = DatabaseConfig()
+        super().__init__(
+            database_config.database_url,
+            ResearchAuditTrail,
+            ResearchAuditTrailCreate
+        )
 
     async def log_event(
         self,
         db: AsyncSession,
         research_run_id: UUID,
-        event_type: AuditEventType,
+        event_type: str,
         event_data: dict[str, Any],
         level: AuditLevel = AuditLevel.INFO,
         user_id: UUID | None = None,
@@ -65,7 +71,7 @@ class ResearchAuditService(SQLAlchemyService[ResearchAuditTrail]):
         research_run_id: UUID,
         limit: int = 100,
         offset: int = 0,
-        event_type: AuditEventType | None = None,
+        event_type: AuditActionType | None = None,
         level: AuditLevel | None = None
     ) -> list[ResearchAuditTrail]:
         """Get audit trail for a specific research run."""

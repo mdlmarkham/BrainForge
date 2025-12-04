@@ -25,7 +25,7 @@ class ReviewStatus(PyEnum):
     NEEDS_REVISION = "needs_revision"
 
 
-class AgentRun(BaseEntity):
+class AgentRunORM(BaseEntity):
     """AgentRun ORM model for audit trails."""
 
     __tablename__ = "agent_runs"

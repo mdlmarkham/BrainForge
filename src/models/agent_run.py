@@ -127,7 +127,7 @@ class AgentRunCreate(AgentRunBase):
     pass
 
 
-class AgentRun(AgentRunBase, BaseEntity):
+class AgentRunResponse(AgentRunBase, BaseEntity):
     """Complete agent run model with constitutional compliance."""
 
     model_config = ConfigDict(from_attributes=True)

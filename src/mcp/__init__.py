@@ -1,8 +1,7 @@
 """BrainForge MCP Server Package"""
 
-from .auth.session import SessionManager
-from .server import BrainForgeMCP
-from .workflows.integration import WorkflowOrchestrator
+# Remove imports that cause circular dependencies
+# These are imported directly in modules that need them
 
 __all__ = [
     "BrainForgeMCP",

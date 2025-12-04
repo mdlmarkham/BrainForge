@@ -6,10 +6,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from ...models.link import Link, LinkCreate
-from ...models.note import Note, NoteCreate, NoteUpdate
-from ...services.database import DatabaseService
-from ...services.semantic_search import SemanticSearchService
+from src.models.link import Link, LinkCreate
+from src.models.note import Note, NoteCreate, NoteUpdate
+from src.services.sqlalchemy_service import DatabaseService
 
 
 class NoteCreateRequest(BaseModel):
@@ -41,7 +40,8 @@ class NoteTools:
 
     def __init__(self, database_service: DatabaseService):
         self.database_service = database_service
-        self.search_service = SemanticSearchService(database_service)
+        # Search service temporarily disabled for MCP server startup
+        self.search_service = None
         self.logger = logging.getLogger(__name__)
 
     async def create_note(

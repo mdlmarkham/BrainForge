@@ -4,7 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from src.models.agent_run import AgentRun, AgentRunCreate, AgentRunStatus
+from src.models.agent_run import AgentRunResponse, AgentRunCreate, AgentRunStatus
 from src.models.embedding import Embedding, EmbeddingCreate
 from src.models.link import Link, LinkCreate, RelationType
 from src.models.note import Note, NoteCreate, NoteType
@@ -142,7 +142,7 @@ class TestAgentRunModel:
             status=AgentRunStatus.PENDING_REVIEW
         )
 
-        agent_run = AgentRun(
+        agent_run = AgentRunResponse(
             id=UUID('88888888-8888-8888-8888-888888888888'),
             agent_name=agent_run_data.agent_name,
             agent_version=agent_run_data.agent_version,

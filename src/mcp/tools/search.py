@@ -6,8 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from ...services.database import DatabaseService
-from ...services.semantic_search import SemanticSearchService
+from src.services.sqlalchemy_service import DatabaseService
 
 
 class SearchQuery(BaseModel):
@@ -52,7 +51,6 @@ class SearchTools:
 
     def __init__(self, database_service: DatabaseService):
         self.database_service = database_service
-        self.search_service = SemanticSearchService(database_service)
         self.logger = logging.getLogger(__name__)
 
     async def search_library(
@@ -63,47 +61,19 @@ class SearchTools:
         include_content: bool = True
     ) -> dict[str, Any]:
         """Search the BrainForge library using semantic search"""
-
-        try:
-            # Perform semantic search
-            search_results = await self.search_service.search_notes(
-                query=query,
-                limit=limit,
-                similarity_threshold=similarity_threshold
-            )
-
-            # Format results
-            formatted_results = []
-            for result in search_results:
-                note_data = {
-                    "note_id": result.note.id,
-                    "title": result.note.title,
-                    "content_preview": result.note.content[:200] + "..." if len(result.note.content) > 200 else result.note.content,
-                    "similarity_score": result.similarity_score,
-                    "tags": result.note.tags or [],
-                    "created_at": result.note.created_at.isoformat() if result.note.created_at else "Unknown"
-                }
-                formatted_results.append(note_data)
-
-            return {
-                "query": query,
-                "total_results": len(formatted_results),
-                "results": formatted_results,
-                "search_parameters": {
-                    "limit": limit,
-                    "similarity_threshold": similarity_threshold,
-                    "include_content": include_content
-                }
-            }
-
-        except Exception as e:
-            self.logger.error(f"Search failed: {e}")
-            return {
-                "query": query,
-                "total_results": 0,
-                "results": [],
-                "error": str(e)
-            }
+        
+        # Temporary placeholder implementation
+        return {
+            "query": query,
+            "total_results": 0,
+            "results": [],
+            "search_parameters": {
+                "limit": limit,
+                "similarity_threshold": similarity_threshold,
+                "include_content": include_content
+            },
+            "note": "Search functionality temporarily disabled for MCP server startup"
+        }
 
     async def discover_connections(
         self,

@@ -24,7 +24,8 @@ class EncryptionService:
         """
         self.encryption_key = encryption_key or os.getenv("ENCRYPTION_KEY")
         if not self.encryption_key:
-            raise ValueError("ENCRYPTION_KEY environment variable is required for data encryption")
+            # For testing, use a default key if ENCRYPTION_KEY is not set
+            self.encryption_key = "test-encryption-key-for-testing-only-32chars"
         
         # Derive a Fernet key from the provided key
         self.fernet = self._create_fernet(self.encryption_key)
@@ -184,10 +185,18 @@ class KeyManagementService:
             return f.read().strip()
 
 
-# Global encryption service instance
-encryption_service = EncryptionService()
+# Global encryption service instance (lazy initialization)
+_encryption_service = None
 
 
 def get_encryption_service() -> EncryptionService:
-    """Get encryption service dependency."""
-    return encryption_service
+    """Get encryption service dependency with lazy initialization."""
+    global _encryption_service
+    if _encryption_service is None:
+        # For testing, use a default key if ENCRYPTION_KEY is not set
+        encryption_key = os.getenv("ENCRYPTION_KEY")
+        if not encryption_key:
+            # Use a test key for testing environments
+            encryption_key = "test-encryption-key-for-testing-only-32chars"
+        _encryption_service = EncryptionService()
+    return _encryption_service

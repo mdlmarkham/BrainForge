@@ -1,6 +1,6 @@
 """BrainForge AI Knowledge Base - Data models package."""
 
-from .agent_run import AgentRun, AgentRunCreate
+from .agent_run import AgentRunResponse, AgentRunCreate
 from .audit_trail import AuditTrail, AuditTrailCreate, AuditTrailUpdate
 from .base import AIGeneratedMixin, BaseEntity, ProvenanceMixin, VersionMixin
 from .content_source import (
@@ -95,7 +95,7 @@ __all__ = [
     "EmbeddingCreate",
     "Link",
     "LinkCreate",
-    "AgentRun",
+    "AgentRunResponse",
     "AgentRunCreate",
     "VersionHistory",
     "VersionHistoryCreate",

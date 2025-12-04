@@ -7,14 +7,14 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.dependencies import AgentRunServiceDep, CurrentUser, DatabaseSession
-from src.models.agent_run import AgentRun, AgentRunCreate
+from src.models.agent_run import AgentRunResponse, AgentRunCreate
 from src.models.orm.user import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/agent/runs", response_model=AgentRun, status_code=status.HTTP_201_CREATED)
+@router.post("/agent/runs", response_model=AgentRunResponse, status_code=status.HTTP_201_CREATED)
 async def execute_agent(
     agent_run_data: AgentRunCreate,
     session: AsyncSession = DatabaseSession,
@@ -43,7 +43,7 @@ async def execute_agent(
         )
 
 
-@router.get("/agent/runs/{run_id}", response_model=AgentRun)
+@router.get("/agent/runs/{run_id}", response_model=AgentRunResponse)
 async def get_agent_run(
     run_id: UUID,
     session: AsyncSession = DatabaseSession,

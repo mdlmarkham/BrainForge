@@ -2,6 +2,10 @@
 
 import asyncio
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +17,9 @@ from src.compliance.constitution import (
     create_compliance_exception_handler,
 )
 
-from .middleware.error_handler import create_error_handler_middleware
-from .middleware.input_validation import create_input_validation_middleware
-from .middleware.rate_limit import create_rate_limit_middleware
+from .middleware.error_handler import ErrorHandlerMiddleware
+from .middleware.input_validation import InputValidationMiddleware
+from .middleware.rate_limit import RateLimitMiddleware
 from .routes import (
     agent,
     auth,
@@ -124,9 +128,9 @@ def create_app() -> FastAPI:
     app.add_middleware(ComplianceMiddleware)
 
     # Add security middleware
-    app.add_middleware(create_input_validation_middleware(app))
-    app.add_middleware(create_error_handler_middleware(app, debug_mode=os.getenv("DEBUG", "false").lower() == "true"))
-    app.add_middleware(create_rate_limit_middleware(app))
+    app.add_middleware(InputValidationMiddleware)
+    app.add_middleware(ErrorHandlerMiddleware, debug_mode=os.getenv("DEBUG", "false").lower() == "true")
+    app.add_middleware(RateLimitMiddleware)
 
     # Configure CORS with secure settings
     app.add_middleware(
@@ -143,17 +147,17 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, create_compliance_exception_handler())
 
     # Include routers
-    app.include_router(notes.router, prefix="/api/v1", tags=["Notes"])
-    app.include_router(search.router, prefix="/api/v1", tags=["Search"])
-    app.include_router(agent.router, prefix="/api/v1", tags=["Agent"])
-    app.include_router(ingestion.router, prefix="/api/v1", tags=["Ingestion"])
-    app.include_router(vault.router, prefix="/api/v1", tags=["Vault"])
-    app.include_router(obsidian.router, prefix="/api/v1", tags=["Obsidian"])
-    app.include_router(research.router, prefix="/api/v1", tags=["Research"])
-    app.include_router(quality.router, prefix="/api/v1", tags=["Quality"])
-    app.include_router(auth.router, prefix="/api/v1", tags=["Authentication"])
-    app.include_router(monitoring.router, prefix="/api/v1", tags=["Monitoring"])
-    app.include_router(gdpr.router, prefix="/api/v1", tags=["GDPR"])
+    app.include_router(notes, prefix="/api/v1", tags=["Notes"])
+    app.include_router(search, prefix="/api/v1", tags=["Search"])
+    app.include_router(agent, prefix="/api/v1", tags=["Agent"])
+    app.include_router(ingestion, prefix="/api/v1", tags=["Ingestion"])
+    app.include_router(vault, prefix="/api/v1", tags=["Vault"])
+    app.include_router(obsidian, prefix="/api/v1", tags=["Obsidian"])
+    app.include_router(research, prefix="/api/v1", tags=["Research"])
+    app.include_router(quality, prefix="/api/v1", tags=["Quality"])
+    app.include_router(auth, prefix="/api/v1", tags=["Authentication"])
+    app.include_router(monitoring, prefix="/api/v1", tags=["Monitoring"])
+    app.include_router(gdpr, prefix="/api/v1", tags=["GDPR"])
 
     # Health check endpoint
     @app.get("/health")
@@ -180,4 +184,4 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 
 from src.models.orm.user import User
 from src.services.metrics.research_metrics import ResearchMetricsCollector
@@ -190,7 +191,7 @@ class HealthCheckService:
         try:
             # Test database connection with a simple query
             start_time = time.time()
-            result = await db.execute("SELECT 1")
+            result = await db.execute(text("SELECT 1"))
             duration_ms = (time.time() - start_time) * 1000
             
             return {

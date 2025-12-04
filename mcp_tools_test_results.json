@@ -1,0 +1,128 @@
+{
+  "search_library": {
+    "success": true,
+    "result": {
+      "query": "artificial intelligence",
+      "total_results": 0,
+      "results": [],
+      "search_parameters": {
+        "limit": 5,
+        "similarity_threshold": 0.7,
+        "include_content": true
+      },
+      "note": "Search functionality temporarily disabled for MCP server startup"
+    },
+    "content": [
+      "type='text' text='{\"query\":\"artificial intelligence\",\"total_results\":0,\"results\":[],\"search_parameters\":{\"limit\":5,\"similarity_threshold\":0.7,\"include_content\":true},\"note\":\"Search functionality temporarily disabled for MCP server startup\"}' annotations=None meta=None"
+    ]
+  },
+  "discover_connections": {
+    "success": true,
+    "result": {
+      "connections_found": 0,
+      "connections": [],
+      "error": "'DatabaseService' object has no attribute 'session'"
+    },
+    "content": [
+      "type='text' text='{\"connections_found\":0,\"connections\":[],\"error\":\"\\'DatabaseService\\' object has no attribute \\'session\\'\"}' annotations=None meta=None"
+    ]
+  },
+  "get_library_stats": {
+    "success": true,
+    "result": {
+      "total_notes": 0,
+      "total_links": 0,
+      "average_note_length": 0,
+      "most_common_tags": [],
+      "recent_activity": {},
+      "error": "'DatabaseService' object has no attribute 'session'"
+    },
+    "content": [
+      "type='text' text='{\"total_notes\":0,\"total_links\":0,\"average_note_length\":0,\"most_common_tags\":[],\"recent_activity\":{},\"error\":\"\\'DatabaseService\\' object has no attribute \\'session\\'\"}' annotations=None meta=None"
+    ]
+  },
+  "create_note": {
+    "success": true,
+    "result": {
+      "error": "Failed to create note: 2 validation errors for NoteCreate\ncreated_by\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nnote_type\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+      "status": "failed"
+    },
+    "content": [
+      "type='text' text='{\"error\":\"Failed to create note: 2 validation errors for NoteCreate\\\\ncreated_by\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\nnote_type\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+    ]
+  },
+  "update_note": {
+    "success": false,
+    "error": "Could not extract note ID from create result",
+    "create_result": {
+      "success": true,
+      "result": {
+        "error": "Failed to create note: 2 validation errors for NoteCreate\ncreated_by\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nnote_type\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "status": "failed"
+      },
+      "content": [
+        "type='text' text='{\"error\":\"Failed to create note: 2 validation errors for NoteCreate\\\\ncreated_by\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\nnote_type\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+      ]
+    }
+  },
+  "link_notes": {
+    "success": false,
+    "error": "Could not extract note IDs from create results",
+    "note1_result": {
+      "success": true,
+      "result": {
+        "error": "Failed to create note: 2 validation errors for NoteCreate\ncreated_by\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nnote_type\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "status": "failed"
+      },
+      "content": [
+        "type='text' text='{\"error\":\"Failed to create note: 2 validation errors for NoteCreate\\\\ncreated_by\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\nnote_type\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+      ]
+    },
+    "note2_result": {
+      "success": true,
+      "result": {
+        "error": "Failed to create note: 2 validation errors for NoteCreate\ncreated_by\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\nnote_type\n  Field required [type=missing, input_value={'title': 'Test Note - AI...urce': 'MCP Test Suite'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "status": "failed"
+      },
+      "content": [
+        "type='text' text='{\"error\":\"Failed to create note: 2 validation errors for NoteCreate\\\\ncreated_by\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\nnote_type\\\\n  Field required [type=missing, input_value={\\'title\\': \\'Test Note - AI...urce\\': \\'MCP Test Suite\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+      ]
+    }
+  },
+  "start_research_workflow": {
+    "success": true,
+    "result": {
+      "workflow_type": "research_discovery",
+      "error": "Failed to start workflow: 2 validation errors for MCPWorkflowCreate\nworkflow_definition\n  Field required [type=missing, input_value={'workflow_type': 'resear...', 'priority': 'normal'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntool_mappings\n  Field required [type=missing, input_value={'workflow_type': 'resear...', 'priority': 'normal'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+      "status": "failed"
+    },
+    "content": [
+      "type='text' text='{\"workflow_type\":\"research_discovery\",\"error\":\"Failed to start workflow: 2 validation errors for MCPWorkflowCreate\\\\nworkflow_definition\\\\n  Field required [type=missing, input_value={\\'workflow_type\\': \\'resear...\\', \\'priority\\': \\'normal\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\ntool_mappings\\\\n  Field required [type=missing, input_value={\\'workflow_type\\': \\'resear...\\', \\'priority\\': \\'normal\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+    ]
+  },
+  "get_workflow_status": {
+    "success": false,
+    "error": "Could not extract workflow ID from start result",
+    "workflow_result": {
+      "success": true,
+      "result": {
+        "workflow_type": "research_discovery",
+        "error": "Failed to start workflow: 2 validation errors for MCPWorkflowCreate\nworkflow_definition\n  Field required [type=missing, input_value={'workflow_type': 'resear...', 'priority': 'normal'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\ntool_mappings\n  Field required [type=missing, input_value={'workflow_type': 'resear...', 'priority': 'normal'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "status": "failed"
+      },
+      "content": [
+        "type='text' text='{\"workflow_type\":\"research_discovery\",\"error\":\"Failed to start workflow: 2 validation errors for MCPWorkflowCreate\\\\nworkflow_definition\\\\n  Field required [type=missing, input_value={\\'workflow_type\\': \\'resear...\\', \\'priority\\': \\'normal\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\\\\ntool_mappings\\\\n  Field required [type=missing, input_value={\\'workflow_type\\': \\'resear...\\', \\'priority\\': \\'normal\\'}, input_type=dict]\\\\n    For further information visit https://errors.pydantic.dev/2.12/v/missing\",\"status\":\"failed\"}' annotations=None meta=None"
+      ]
+    }
+  },
+  "export_library": {
+    "success": false,
+    "error": "1 validation error for call[export_library]\ndate_range\n  Input should be a valid dictionary [type=dict_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/dict_type",
+    "error_type": "ToolError"
+  },
+  "generate_documentation": {
+    "success": false,
+    "error": "1 validation error for call[generate_documentation]\ntemplate\n  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]\n    For further information visit https://errors.pydantic.dev/2.12/v/string_type",
+    "error_type": "ToolError"
+  }
+}

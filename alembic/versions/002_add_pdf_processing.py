@@ -17,153 +17,191 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create enum types for ingestion pipeline
+    # Create enum types for ingestion pipeline with conditional checks
     op.execute("""
-        CREATE TYPE content_type AS ENUM (
-            'web', 'video', 'text', 'pdf'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'content_type') THEN
+                CREATE TYPE content_type AS ENUM (
+                    'web', 'video', 'text', 'pdf'
+                );
+            END IF;
+        END $$;
     """)
 
     op.execute("""
-        CREATE TYPE processing_state AS ENUM (
-            'validating', 'extracting_metadata', 'extracting_text', 
-            'assessing_quality', 'summarizing', 'classifying', 
-            'awaiting_review', 'integrated', 'failed'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'processing_state') THEN
+                CREATE TYPE processing_state AS ENUM (
+                    'validating', 'extracting_metadata', 'extracting_text',
+                    'assessing_quality', 'summarizing', 'classifying',
+                    'awaiting_review', 'integrated', 'failed'
+                );
+            END IF;
+        END $$;
     """)
 
     op.execute("""
-        CREATE TYPE review_status AS ENUM (
-            'pending', 'approved', 'rejected', 'needs_revision'
-        )
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_status') THEN
+                CREATE TYPE review_status AS ENUM (
+                    'pending', 'approved', 'rejected', 'needs_revision'
+                );
+            END IF;
+        END $$;
     """)
 
-    # Create ingestion_tasks table
-    op.create_table('ingestion_tasks',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('created_by', sa.String(length=255), nullable=False),
-        sa.Column('provenance', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('content_type', sa.Enum('web', 'video', 'text', 'pdf', name='content_type'), nullable=False),
-        sa.Column('source_url', sa.Text(), nullable=True),
-        sa.Column('file_name', sa.Text(), nullable=True),
-        sa.Column('file_size', sa.Integer(), nullable=True),
-        sa.Column('tags', sa.ARRAY(sa.Text()), server_default='{}', nullable=False),
-        sa.Column('priority', sa.String(length=10), server_default='normal', nullable=False),
-        sa.Column('processing_state', sa.Enum(
-            'validating', 'extracting_metadata', 'extracting_text',
-            'assessing_quality', 'summarizing', 'classifying',
-            'awaiting_review', 'integrated', 'failed', name='processing_state'
-        ), server_default='validating', nullable=False),
-        sa.Column('processing_attempts', sa.Integer(), server_default='0', nullable=False),
-        sa.Column('last_processing_error', sa.Text(), nullable=True),
-        sa.Column('estimated_completion', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('id'),
-        sa.CheckConstraint("priority IN ('low', 'normal', 'high')", name='ck_ingestion_priority'),
-        sa.CheckConstraint("processing_attempts <= 3", name='ck_max_processing_attempts'),
-        sa.CheckConstraint("file_size IS NULL OR file_size <= 104857600", name='ck_max_file_size')  # 100MB
-    )
+    # Create ingestion_tasks table using raw SQL to avoid enum creation issues
+    op.execute("""
+        CREATE TABLE ingestion_tasks (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            created_by VARCHAR(255) NOT NULL,
+            provenance JSON NOT NULL DEFAULT '{}',
+            content_type content_type NOT NULL,
+            source_url TEXT,
+            file_name TEXT,
+            file_size INTEGER,
+            tags TEXT[] NOT NULL DEFAULT '{}',
+            priority VARCHAR(10) NOT NULL DEFAULT 'normal',
+            processing_state processing_state NOT NULL DEFAULT 'validating',
+            processing_attempts INTEGER NOT NULL DEFAULT 0,
+            last_processing_error TEXT,
+            estimated_completion TIMESTAMP WITH TIME ZONE,
+            CONSTRAINT ck_ingestion_priority CHECK (priority IN ('low', 'normal', 'high')),
+            CONSTRAINT ck_max_processing_attempts CHECK (processing_attempts <= 3),
+            CONSTRAINT ck_max_file_size CHECK (file_size IS NULL OR file_size <= 104857600)
+        )
+    """)
 
     # Create content_sources table
-    op.create_table('content_sources',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('source_type', sa.String(length=50), nullable=False),
-        sa.Column('source_url', sa.Text(), nullable=True),
-        sa.Column('source_metadata', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('retrieval_method', sa.String(length=100), nullable=False),
-        sa.Column('retrieval_timestamp', sa.DateTime(timezone=True), nullable=False),
-        sa.Column('content_hash', sa.String(length=64), nullable=False),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
+    op.execute("""
+        CREATE TABLE content_sources (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            source_type VARCHAR(50) NOT NULL,
+            source_url TEXT,
+            source_metadata JSON NOT NULL DEFAULT '{}',
+            retrieval_method VARCHAR(100) NOT NULL,
+            retrieval_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+            content_hash VARCHAR(64) NOT NULL,
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE
+        )
+    """)
 
     # Create processing_results table
-    op.create_table('processing_results',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('summary', sa.Text(), nullable=False),
-        sa.Column('classifications', sa.ARRAY(sa.Text()), server_default='{}', nullable=False),
-        sa.Column('connection_suggestions', sa.JSON(), server_default='[]', nullable=False),
-        sa.Column('confidence_scores', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('processing_metadata', sa.JSON(), server_default='{}', nullable=False),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
+    op.execute("""
+        CREATE TABLE processing_results (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            summary TEXT NOT NULL,
+            classifications TEXT[] NOT NULL DEFAULT '{}',
+            connection_suggestions JSON NOT NULL DEFAULT '[]',
+            confidence_scores JSON NOT NULL DEFAULT '{}',
+            processing_metadata JSON NOT NULL DEFAULT '{}',
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE
+        )
+    """)
 
     # Create pdf_metadata table
-    op.create_table('pdf_metadata',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('page_count', sa.Integer(), nullable=False),
-        sa.Column('author', sa.Text(), nullable=True),
-        sa.Column('title', sa.Text(), nullable=True),
-        sa.Column('subject', sa.Text(), nullable=True),
-        sa.Column('creation_date', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('modification_date', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('pdf_version', sa.String(length=10), nullable=False),
-        sa.Column('encryption_status', sa.String(length=20), nullable=False),
-        sa.Column('extraction_method', sa.String(length=50), nullable=False),
-        sa.Column('extraction_quality_score', sa.Float(), nullable=False),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.CheckConstraint("encryption_status IN ('none', 'password', 'certificate')", name='ck_encryption_status'),
-        sa.CheckConstraint("extraction_method IN ('dockling_basic', 'dockling_advanced', 'fallback')", name='ck_extraction_method'),
-        sa.CheckConstraint("extraction_quality_score >= 0.0 AND extraction_quality_score <= 1.0", name='ck_quality_score_range')
-    )
+    op.execute("""
+        CREATE TABLE pdf_metadata (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            page_count INTEGER NOT NULL,
+            author TEXT,
+            title TEXT,
+            subject TEXT,
+            creation_date TIMESTAMP WITH TIME ZONE,
+            modification_date TIMESTAMP WITH TIME ZONE,
+            pdf_version VARCHAR(10) NOT NULL,
+            encryption_status VARCHAR(20) NOT NULL,
+            extraction_method VARCHAR(50) NOT NULL,
+            extraction_quality_score FLOAT NOT NULL,
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE,
+            CONSTRAINT ck_encryption_status CHECK (encryption_status IN ('none', 'password', 'certificate')),
+            CONSTRAINT ck_extraction_method CHECK (extraction_method IN ('dockling_basic', 'dockling_advanced', 'fallback')),
+            CONSTRAINT ck_quality_score_range CHECK (extraction_quality_score >= 0.0 AND extraction_quality_score <= 1.0)
+        )
+    """)
 
     # Create pdf_processing_results table
-    op.create_table('pdf_processing_results',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('extracted_text', sa.Text(), nullable=False),
-        sa.Column('text_quality_metrics', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('section_breaks', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('processing_time_ms', sa.Integer(), nullable=False),
-        sa.Column('dockling_version', sa.String(length=20), nullable=False),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.CheckConstraint("processing_time_ms >= 0", name='ck_processing_time_positive')
-    )
+    op.execute("""
+        CREATE TABLE pdf_processing_results (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            extracted_text TEXT NOT NULL,
+            text_quality_metrics JSON NOT NULL DEFAULT '{}',
+            section_breaks JSON NOT NULL DEFAULT '{}',
+            processing_time_ms INTEGER NOT NULL,
+            dockling_version VARCHAR(20) NOT NULL,
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE,
+            CONSTRAINT ck_processing_time_positive CHECK (processing_time_ms >= 0)
+        )
+    """)
 
-    # Create review_queue table
-    op.create_table('review_queue',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('review_status', sa.Enum('pending', 'approved', 'rejected', 'needs_revision', name='review_status'), server_default='pending', nullable=False),
-        sa.Column('reviewer_id', sa.String(length=255), nullable=True),
-        sa.Column('reviewed_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('review_notes', sa.Text(), nullable=True),
-        sa.Column('priority', sa.Integer(), server_default='0', nullable=False),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
+    # Create review_queue table - first ensure the enum exists and has the correct values
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'review_status') THEN
+                CREATE TYPE review_status AS ENUM (
+                    'pending', 'approved', 'rejected', 'needs_revision'
+                );
+            ELSE
+                -- If the enum exists but doesn't have 'pending', we need to handle this
+                IF NOT EXISTS (SELECT 1 FROM pg_enum WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'review_status') AND enumlabel = 'pending') THEN
+                    -- Drop and recreate the enum if it doesn't have the expected values
+                    DROP TYPE IF EXISTS review_status CASCADE;
+                    CREATE TYPE review_status AS ENUM (
+                        'pending', 'approved', 'rejected', 'needs_revision'
+                    );
+                END IF;
+            END IF;
+        END $$;
+    """)
+
+    op.execute("""
+        CREATE TABLE review_queue (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            review_status review_status NOT NULL DEFAULT 'pending',
+            reviewer_id VARCHAR(255),
+            reviewed_at TIMESTAMP WITH TIME ZONE,
+            review_notes TEXT,
+            priority INTEGER NOT NULL DEFAULT 0,
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE
+        )
+    """)
 
     # Create audit_trail table
-    op.create_table('audit_trail',
-        sa.Column('id', sa.UUID(), server_default=sa.text('gen_random_uuid()'), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('ingestion_task_id', sa.UUID(), nullable=False),
-        sa.Column('action_type', sa.String(length=100), nullable=False),
-        sa.Column('action_details', sa.JSON(), server_default='{}', nullable=False),
-        sa.Column('performed_by', sa.String(length=255), nullable=False),
-        sa.Column('outcome', sa.String(length=50), nullable=False),
-        sa.Column('error_details', sa.Text(), nullable=True),
-        sa.ForeignKeyConstraint(['ingestion_task_id'], ['ingestion_tasks.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id')
-    )
+    op.execute("""
+        CREATE TABLE audit_trail (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+            ingestion_task_id UUID NOT NULL,
+            action_type VARCHAR(100) NOT NULL,
+            action_details JSON NOT NULL DEFAULT '{}',
+            performed_by VARCHAR(255) NOT NULL,
+            outcome VARCHAR(50) NOT NULL,
+            error_details TEXT,
+            FOREIGN KEY (ingestion_task_id) REFERENCES ingestion_tasks(id) ON DELETE CASCADE
+        )
+    """)
 
     # Create indexes for performance
     op.create_index('idx_ingestion_tasks_state', 'ingestion_tasks', ['processing_state'])
@@ -196,13 +234,13 @@ def downgrade() -> None:
     op.drop_index('idx_ingestion_tasks_state')
 
     # Drop tables
-    op.drop_table('audit_trail')
-    op.drop_table('review_queue')
-    op.drop_table('pdf_processing_results')
-    op.drop_table('pdf_metadata')
-    op.drop_table('processing_results')
-    op.drop_table('content_sources')
-    op.drop_table('ingestion_tasks')
+    op.execute('DROP TABLE IF EXISTS audit_trail')
+    op.execute('DROP TABLE IF EXISTS review_queue')
+    op.execute('DROP TABLE IF EXISTS pdf_processing_results')
+    op.execute('DROP TABLE IF EXISTS pdf_metadata')
+    op.execute('DROP TABLE IF EXISTS processing_results')
+    op.execute('DROP TABLE IF EXISTS content_sources')
+    op.execute('DROP TABLE IF EXISTS ingestion_tasks')
 
     # Drop enum types
     op.execute("DROP TYPE IF EXISTS review_status")
