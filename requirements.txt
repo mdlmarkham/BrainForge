@@ -58,6 +58,7 @@ mkdocs-material>=9.5.31
 # Authentication
 python-jose[cryptography]>=3.5.0
 passlib[bcrypt]>=1.7.4
+bcrypt==4.1.2
 
 # Caching and performance
 redis>=7.1.0

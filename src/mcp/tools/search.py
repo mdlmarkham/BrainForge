@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from src.services.sqlalchemy_service import DatabaseService
+from src.services.generic_database_service import DatabaseService
 
 
 class SearchQuery(BaseModel):

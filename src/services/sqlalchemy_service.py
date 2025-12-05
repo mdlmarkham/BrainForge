@@ -1,7 +1,7 @@
 """SQLAlchemy-based service implementations for BrainForge."""
 
 import logging
-from typing import Any
+from typing import Any, Generic, TypeVar
 from uuid import UUID
 
 from sqlalchemy import select
@@ -11,6 +11,8 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from ..models.note import Note, NoteCreate, NoteUpdate
 from .base import BaseService
+
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,7 @@ class NoteModel(Base):
     ai_justification: Mapped[str] = mapped_column(nullable=True)
 
 
-class SQLAlchemyService(BaseService):
+class SQLAlchemyService(BaseService, Generic[T]):
     """Base service implementation using SQLAlchemy."""
 
     def __init__(self, database_url: str, model_class: type[Any], pydantic_model: type[Any]):

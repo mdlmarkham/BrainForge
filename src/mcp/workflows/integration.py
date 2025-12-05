@@ -1,390 +1,292 @@
-"""SpiffWorkflow Integration for MCP"""
-
+"""Real SpiffWorkflow Integration for BrainForge MCP"""
 import asyncio
+import json
 import logging
-from typing import Any
-from uuid import UUID
+from typing import Any, Dict, List, Optional
+from uuid import UUID, uuid4
 
-# Mock SpiffWorkflow classes since the actual package is not available
-class MockSpiffWorkflow:
-    """Mock SpiffWorkflow implementation"""
-    def create_workflow(self, bpmn_definition):
-        return MockWorkflowInstance()
+from SpiffWorkflow.bpmn import BpmnWorkflow
+from SpiffWorkflow.bpmn.parser import BpmnParser
+from SpiffWorkflow.bpmn.serializer import BpmnWorkflowSerializer
+from SpiffWorkflow import TaskState
+from pydantic import BaseModel, Field
 
-class MockWorkflowInstance:
-    """Mock workflow instance"""
-    def __init__(self):
-        self.alive = True
-        self.data = {}
-    
-    def is_alive(self):
-        return self.alive
-    
-    def get_tasks(self, state=None):
-        return []
-    
-    def get_data(self):
-        return self.data
-    
-    def complete_task(self, task):
-        pass
-    
-    def cancel(self):
-        self.alive = False
+from src.services.research_orchestrator import ResearchOrchestrator
 
-class MockTask:
-    """Mock task implementation"""
-    READY = "ready"
-    COMPLETED = "completed"
-    
-    def __init__(self, name):
-        self.task_spec = MockTaskSpec(name)
-        self.state = MockTask.READY
-        self.data = {}
-
-class MockTaskSpec:
-    """Mock task specification"""
-    def __init__(self, name):
-        self.name = name
-
-from ...models.mcp_workflow import MCPWorkflow
-from ...services.generic_database_service import DatabaseService
+logger = logging.getLogger(__name__)
 
 
 class WorkflowOrchestrator:
-    """Orchestrates SpiffWorkflow integration for MCP operations"""
-
-    def __init__(self, database_service: DatabaseService):
-        self.database_service = database_service
-        self.workflow_engine = MockSpiffWorkflow()
-        self.active_workflows: dict[UUID, Any] = {}
-        self.logger = logging.getLogger(__name__)
-
-    async def start_workflow(self, workflow_id: UUID) -> dict[str, Any]:
-        """Start a workflow execution"""
-
+    """Orchestrates real SpiffWorkflow execution with constitutional compliance."""
+    
+    def __init__(self, research_orchestrator: ResearchOrchestrator):
+        self.research_orchestrator = research_orchestrator
+        self.workflows: Dict[UUID, BpmnWorkflow] = {}
+        self.workflow_data: Dict[UUID, Dict[str, Any]] = {}
+        self.serializer = BpmnWorkflowSerializer()
+        
+        # Initialize BPMN parser and load workflow specifications
+        self.parser = BpmnParser()
+        self._load_workflow_specifications()
+    
+    def _load_workflow_specifications(self):
+        """Load BPMN workflow specifications."""
         try:
-            # Get workflow definition
-            async with self.database_service.session() as session:
-                db_workflow = await self.database_service.get_by_id(
-                    session, "mcp_workflows", workflow_id
-                )
-
-                if not db_workflow:
-                    return {
-                        "workflow_id": str(workflow_id),
-                        "error": "Workflow not found",
-                        "status": "failed"
-                    }
-
-                workflow = MCPWorkflow.from_orm(db_workflow)
-
-            # Initialize workflow engine
-            workflow_instance = self.workflow_engine.create_workflow(
-                workflow.bpmn_definition
-            )
-
-            # Store active workflow
-            self.active_workflows[workflow_id] = {
-                "instance": workflow_instance,
-                "status": "running",
-                "current_step": "initializing"
-            }
-
-            # Update workflow status
-            await self._update_workflow_status(workflow_id, "running", "initializing", 0.1)
-
-            # Start workflow execution
-            asyncio.create_task(self._execute_workflow(workflow_id, workflow_instance))
-
-            return {
-                "workflow_id": workflow_id,
-                "status": "started",
-                "current_step": "initializing",
-                "progress": 0.1
-            }
-
+            self.parser.add_bpmn_file('src/mcp/workflows/research_workflow.bpmn')
+            logger.info("Successfully loaded research workflow BPMN file")
         except Exception as e:
-            self.logger.error(f"Failed to start workflow: {e}")
-            await self._update_workflow_status(workflow_id, "failed", "initialization", 0.0, str(e))
-            return {
-                "workflow_id": str(workflow_id),
-                "error": f"Failed to start workflow: {str(e)}",
-                "status": "failed"
-            }
-
-    async def _execute_workflow(self, workflow_id: UUID, workflow_instance):
-        """Execute workflow asynchronously"""
-
-        try:
-            # Execute workflow steps
-            while workflow_instance.is_alive():
-                # Get current tasks
-                ready_tasks = workflow_instance.get_tasks()
-
-                if ready_tasks:
-                    current_task = ready_tasks[0]
-                    task_name = current_task.task_spec.name
-
-                    # Update status
-                    await self._update_workflow_status(
-                        workflow_id,
-                        "running",
-                        task_name,
-                        self._calculate_progress(workflow_instance)
-                    )
-
-                    # Execute task
-                    await self._execute_workflow_task(workflow_id, current_task)
-
-                    # Complete task
-                    workflow_instance.complete_task(current_task)
-
-                await asyncio.sleep(0.1)  # Small delay to prevent tight loop
-
-            # Workflow completed
-            result = workflow_instance.get_data()
-            await self._update_workflow_status(
-                workflow_id,
-                "completed",
-                "completed",
-                1.0,
-                result=result
-            )
-
-            # Clean up
-            if workflow_id in self.active_workflows:
-                del self.active_workflows[workflow_id]
-
-        except Exception as e:
-            self.logger.error(f"Workflow execution failed: {e}")
-            await self._update_workflow_status(
-                workflow_id,
-                "failed",
-                "execution",
-                self._calculate_progress(workflow_instance),
-                str(e)
-            )
-
-    async def _execute_workflow_task(self, workflow_id: UUID, task):
-        """Execute a specific workflow task"""
-
-        task_name = task.task_spec.name
-        self.logger.info(f"Executing workflow task: {task_name}")
-
-        try:
-            # Map task names to execution methods
-            task_executors = {
-                "topic_analysis": self._execute_topic_analysis,
-                "source_discovery": self._execute_source_discovery,
-                "content_ingestion": self._execute_content_ingestion,
-                "semantic_analysis": self._execute_semantic_analysis,
-                "connection_mapping": self._execute_connection_mapping,
-                "report_generation": self._execute_report_generation,
-                "content_parsing": self._execute_content_parsing,
-                "semantic_embedding": self._execute_semantic_embedding,
-                "quality_assessment": self._execute_quality_assessment,
-                "relevance_scoring": self._execute_relevance_scoring,
-                "summary_generation": self._execute_summary_generation,
-                "note_analysis": self._execute_note_analysis,
-                "semantic_comparison": self._execute_semantic_comparison,
-                "connection_scoring": self._execute_connection_scoring,
-                "link_creation": self._execute_link_creation,
-                "visualization_generation": self._execute_visualization_generation
-            }
-
-            if task_name in task_executors:
-                result = await task_executors[task_name](workflow_id, task)
-                task.data = result
-            else:
-                self.logger.warning(f"Unknown task: {task_name}")
-                task.data = {"status": "skipped", "reason": "unknown_task"}
-
-        except Exception as e:
-            self.logger.error(f"Task execution failed: {task_name} - {e}")
-            task.data = {"status": "failed", "error": str(e)}
+            logger.error(f"Failed to load BPMN workflow specifications: {e}")
             raise
-
-    async def get_workflow_status(self, workflow_id: UUID) -> dict[str, Any]:
-        """Get current status of a workflow"""
-
-        if workflow_id not in self.active_workflows:
-            # Check database for completed/failed workflows
-            async with self.database_service.session() as session:
-                db_workflow = await self.database_service.get_by_id(
-                    session, "mcp_workflows", workflow_id
-                )
-
-                if db_workflow:
-                    workflow = MCPWorkflow.from_orm(db_workflow)
-                    return {
-                        "status": workflow.status,
-                        "current_step": "completed" if workflow.status == "completed" else "unknown",
-                        "progress": 1.0 if workflow.status == "completed" else 0.0,
-                        "result": workflow.result,
-                        "error_message": workflow.error_message
-                    }
-                else:
-                    return {
-                        "status": "not_found",
-                        "current_step": "unknown",
-                        "progress": 0.0
-                    }
-
-        workflow_info = self.active_workflows[workflow_id]
-        workflow_instance = workflow_info["instance"]
-
-        return {
-            "status": workflow_info["status"],
-            "current_step": workflow_info["current_step"],
-            "progress": self._calculate_progress(workflow_instance),
-            "result": workflow_instance.get_data() if workflow_instance else None
-        }
-
-    async def cancel_workflow(self, workflow_id: UUID) -> dict[str, Any]:
-        """Cancel a running workflow"""
-
-        if workflow_id in self.active_workflows:
-            workflow_info = self.active_workflows[workflow_id]
-            workflow_instance = workflow_info["instance"]
-
-            if workflow_instance and workflow_instance.is_alive():
-                workflow_instance.cancel()
-
-            # Update status
-            await self._update_workflow_status(workflow_id, "cancelled", "cancelled", 0.0)
-
-            # Clean up
-            del self.active_workflows[workflow_id]
-
-            return {
-                "workflow_id": str(workflow_id),
-                "status": "cancelled",
-                "message": "Workflow cancelled successfully"
-            }
-        else:
-            return {
-                "workflow_id": str(workflow_id),
-                "error": "Workflow not found or not running",
-                "status": "failed"
-            }
-
-    async def _update_workflow_status(
-        self,
-        workflow_id: UUID,
-        status: str,
-        current_step: str,
-        progress: float,
-        error_message: str = None,
-        result: dict[str, Any] = None
-    ):
-        """Update workflow status in database"""
-
+    
+    async def create_workflow(self, workflow_type: str, data: Dict[str, Any]) -> UUID:
+        """Create a new workflow instance using real SpiffWorkflow."""
         try:
-            update_data = {
-                "status": status,
-                "current_step": current_step,
-                "progress": progress
+            # Get workflow specification
+            if workflow_type == "research_workflow":
+                spec = self.parser.get_spec('ResearchWorkflow')
+                subprocess_specs = self.parser.get_subprocess_specs('ResearchWorkflow')
+            else:
+                raise ValueError(f"Unknown workflow type: {workflow_type}")
+            
+            # Create workflow instance
+            workflow = BpmnWorkflow(spec, subprocess_specs)
+            workflow_id = uuid4()
+            
+            # Set initial data with constitutional compliance
+            workflow_data = data.copy()
+            workflow_data["constitutional_audit"] = {
+                "workflow_created": True,
+                "workflow_type": workflow_type,
+                "workflow_id": str(workflow_id)
             }
-
-            if error_message:
-                update_data["error_message"] = error_message
-
-            if result:
-                update_data["result"] = result
-
-            async with self.database_service.session() as session:
-                await self.database_service.update(
-                    session, "mcp_workflows", workflow_id, update_data
-                )
-
+            workflow.data.update(workflow_data)
+            
+            # Store workflow and its data
+            self.workflows[workflow_id] = workflow
+            self.workflow_data[workflow_id] = workflow_data
+            
+            logger.info(f"Created workflow {workflow_id} of type {workflow_type}")
+            return workflow_id
+            
         except Exception as e:
-            self.logger.error(f"Failed to update workflow status: {e}")
-
-    def _calculate_progress(self, workflow_instance) -> float:
-        """Calculate workflow progress percentage"""
-        if not workflow_instance:
-            return 0.0
-
-        # Simplified progress calculation
-        # In a real implementation, this would be more sophisticated
-        total_tasks = len(workflow_instance.get_tasks())
-        completed_tasks = len([t for t in workflow_instance.get_tasks() if t.state == "completed"])
-
-        if total_tasks == 0:
-            return 0.0
-
-        return min(completed_tasks / total_tasks, 1.0)
-
-    # Task execution methods (simplified implementations)
-
-    async def _execute_topic_analysis(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute topic analysis task"""
-        await asyncio.sleep(0.5)  # Simulate work
-        return {"topics_identified": 3, "analysis_complete": True}
-
-    async def _execute_source_discovery(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute source discovery task"""
-        await asyncio.sleep(0.3)
-        return {"sources_found": 5, "discovery_complete": True}
-
-    async def _execute_content_ingestion(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute content ingestion task"""
-        await asyncio.sleep(0.7)
-        return {"content_ingested": 10, "ingestion_complete": True}
-
-    async def _execute_semantic_analysis(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute semantic analysis task"""
-        await asyncio.sleep(0.4)
-        return {"analysis_performed": True, "semantic_clusters": 2}
-
-    async def _execute_connection_mapping(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute connection mapping task"""
-        await asyncio.sleep(0.6)
-        return {"connections_mapped": 8, "mapping_complete": True}
-
-    async def _execute_report_generation(self, workflow_id: UUID, task) -> dict[str, Any]:
-        """Execute report generation task"""
-        await asyncio.sleep(0.8)
-        return {"report_generated": True, "report_size": "medium"}
-
-    # Additional task methods would be implemented similarly...
-    async def _execute_content_parsing(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.2)
-        return {"parsing_complete": True}
-
-    async def _execute_semantic_embedding(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.3)
-        return {"embeddings_generated": True}
-
-    async def _execute_quality_assessment(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.4)
-        return {"quality_score": 0.85}
-
-    async def _execute_relevance_scoring(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.3)
-        return {"relevance_scores_calculated": True}
-
-    async def _execute_summary_generation(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.5)
-        return {"summary_generated": True}
-
-    async def _execute_note_analysis(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.3)
-        return {"notes_analyzed": 15}
-
-    async def _execute_semantic_comparison(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.4)
-        return {"comparisons_made": 25}
-
-    async def _execute_connection_scoring(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.3)
-        return {"scores_calculated": True}
-
-    async def _execute_link_creation(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.2)
-        return {"links_created": 12}
-
-    async def _execute_visualization_generation(self, workflow_id: UUID, task) -> dict[str, Any]:
-        await asyncio.sleep(0.6)
-        return {"visualization_created": True}
+            logger.error(f"Failed to create workflow: {e}")
+            raise
+    
+    async def get_workflow_status(self, workflow_id: UUID) -> Dict[str, Any]:
+        """Get workflow status using real SpiffWorkflow."""
+        if workflow_id not in self.workflows:
+            raise ValueError(f"Workflow {workflow_id} not found")
+        
+        workflow = self.workflows[workflow_id]
+        
+        # Get all tasks
+        all_tasks = workflow.get_tasks()
+        ready_tasks = workflow.get_tasks(state=TaskState.READY)
+        completed_tasks = workflow.get_tasks(state=TaskState.COMPLETED)
+        
+        return {
+            "workflow_id": workflow_id,
+            "is_completed": workflow.is_completed(),
+            "is_alive": not workflow.is_completed(),
+            "total_tasks": len(all_tasks),
+            "completed_tasks": len(completed_tasks),
+            "ready_tasks": len(ready_tasks),
+            "ready_task_details": [
+                {
+                    "task_id": task.id,
+                    "task_name": task.task_spec.name,
+                    "description": getattr(task.task_spec, 'description', '')
+                }
+                for task in ready_tasks
+            ],
+            "data": workflow.data
+        }
+    
+    async def execute_workflow_step(self, workflow_id: UUID) -> Dict[str, Any]:
+        """Execute the next workflow step using real SpiffWorkflow."""
+        if workflow_id not in self.workflows:
+            raise ValueError(f"Workflow {workflow_id} not found")
+        
+        workflow = self.workflows[workflow_id]
+        
+        try:
+            # Execute automated engine steps
+            workflow.do_engine_steps()
+            
+            # Get ready manual tasks
+            ready_tasks = workflow.get_tasks(state=TaskState.READY, manual=True)
+            
+            if ready_tasks:
+                # For now, auto-complete the first ready task with mock data
+                # In a real implementation, this would wait for user input
+                task = ready_tasks[0]
+                task_result = await self._execute_task_logic(task.task_spec.name, workflow.data)
+                
+                # Update task data and complete it
+                task.data.update(task_result)
+                task.run()
+                
+                # Continue with engine steps
+                workflow.do_engine_steps()
+            
+            return await self.get_workflow_status(workflow_id)
+            
+        except Exception as e:
+            logger.error(f"Failed to execute workflow step: {e}")
+            raise
+    
+    async def complete_task(self, workflow_id: UUID, task_id: int, task_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Complete a specific task in the workflow."""
+        if workflow_id not in self.workflows:
+            raise ValueError(f"Workflow {workflow_id} not found")
+        
+        workflow = self.workflows[workflow_id]
+        task_data = task_data or {}
+        
+        try:
+            # Find the task by ID
+            task = None
+            for t in workflow.get_tasks():
+                if t.id == task_id:
+                    task = t
+                    break
+            
+            if not task:
+                raise ValueError(f"Task {task_id} not found in workflow {workflow_id}")
+            
+            if task.state != TaskState.READY:
+                raise ValueError(f"Task {task_id} is not in READY state")
+            
+            # Execute task logic and update data
+            task_result = await self._execute_task_logic(task.task_spec.name, {**workflow.data, **task_data})
+            task.data.update(task_result)
+            
+            # Complete the task
+            task.run()
+            
+            # Continue with engine steps
+            workflow.do_engine_steps()
+            
+            return {
+                "task_completed": task.task_spec.name,
+                "result": task_result,
+                "workflow_status": await self.get_workflow_status(workflow_id)
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to complete task: {e}")
+            raise
+    
+    async def _execute_task_logic(self, task_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute specific task logic with constitutional compliance."""
+        constitutional_audit = data.get("constitutional_audit", {})
+        
+        if task_name == "Topic Analysis":
+            result = await self._topic_analysis(data)
+        elif task_name == "Source Discovery":
+            result = await self._source_discovery(data)
+        elif task_name == "Content Analysis":
+            result = await self._content_analysis(data)
+        elif task_name == "Synthesis":
+            result = await self._synthesis(data)
+        elif task_name == "Report Generation":
+            result = await self._report_generation(data)
+        else:
+            result = {"status": "unknown_task", "data": data}
+        
+        # Update constitutional audit
+        constitutional_audit[f"{task_name.lower().replace(' ', '_')}_completed"] = True
+        result["constitutional_audit"] = constitutional_audit
+        
+        return result
+    
+    async def _topic_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute topic analysis task."""
+        topic = data.get("topic", "")
+        return {
+            "task": "topic_analysis",
+            "topic": topic,
+            "analysis": f"Analyzed topic: {topic}",
+            "scope_defined": True
+        }
+    
+    async def _source_discovery(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute source discovery task."""
+        topic = data.get("topic", "")
+        max_sources = data.get("max_sources", 10)
+        
+        sources = await self.research_orchestrator.gather_sources(topic, max_sources)
+        
+        return {
+            "task": "source_discovery",
+            "topic": topic,
+            "sources_found": len(sources),
+            "sources": sources
+        }
+    
+    async def _content_analysis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute content analysis task."""
+        sources = data.get("sources", [])
+        
+        analysis = await self.research_orchestrator.analyze_content(sources)
+        
+        return {
+            "task": "content_analysis",
+            "sources_analyzed": len(sources),
+            "analysis": analysis
+        }
+    
+    async def _synthesis(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute synthesis task."""
+        analysis = data.get("analysis", {})
+        
+        synthesis = await self.research_orchestrator.synthesize_findings(analysis)
+        
+        return {
+            "task": "synthesis",
+            "synthesis": synthesis,
+            "insights_generated": True
+        }
+    
+    async def _report_generation(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute report generation task."""
+        synthesis = data.get("synthesis", {})
+        
+        report = await self.research_orchestrator.generate_report(synthesis)
+        
+        return {
+            "task": "report_generation",
+            "report": report,
+            "report_generated": True
+        }
+    
+    async def serialize_workflow(self, workflow_id: UUID) -> str:
+        """Serialize workflow state for persistence."""
+        if workflow_id not in self.workflows:
+            raise ValueError(f"Workflow {workflow_id} not found")
+        
+        workflow = self.workflows[workflow_id]
+        workflow_dict = self.serializer.to_dict(workflow)
+        return json.dumps(workflow_dict, indent=2)
+    
+    async def deserialize_workflow(self, workflow_id: UUID, serialized_state: str) -> None:
+        """Deserialize workflow state from persistence."""
+        workflow_dict = json.loads(serialized_state)
+        workflow = self.serializer.from_dict(workflow_dict)
+        self.workflows[workflow_id] = workflow
+    
+    async def cancel_workflow(self, workflow_id: UUID) -> Dict[str, Any]:
+        """Cancel a workflow."""
+        if workflow_id not in self.workflows:
+            raise ValueError(f"Workflow {workflow_id} not found")
+        
+        # Remove workflow from active workflows
+        del self.workflows[workflow_id]
+        if workflow_id in self.workflow_data:
+            del self.workflow_data[workflow_id]
+        
+        return {
+            "workflow_id": workflow_id,
+            "cancelled": True,
+            "constitutional_audit": {"workflow_cancelled": True}
+        }

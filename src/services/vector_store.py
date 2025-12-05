@@ -438,3 +438,7 @@ def create_vector_store(database_service: DatabaseService, use_mock: bool = Fals
         return MockVectorStore(database_service)
     else:
         return VectorStore(database_service)
+
+
+# Backward compatibility alias
+VectorStoreService = VectorStore

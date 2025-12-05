@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from src.models.link import Link
 from src.models.note import Note
-from src.services.sqlalchemy_service import DatabaseService
+from src.services.generic_database_service import DatabaseService
 
 
 class ExportRequest(BaseModel):

@@ -56,11 +56,10 @@ class WorkflowTools:
                     "status": "failed"
                 }
 
-            # Create workflow record with proper BPMN definition structure
-            bpmn_template = self._get_bpmn_template(workflow_type)
+            # Create workflow record with real BPMN file reference
             workflow_create = MCPWorkflowCreate(
                 workflow_type=workflow_type,
-                workflow_definition=bpmn_template,
+                workflow_definition={"bpmn_file": "research_workflow.bpmn"},  # Reference to actual BPMN file
                 tool_mappings={},  # Empty for now, can be populated later
                 parameters=parameters or {},
                 status="initializing",
@@ -73,15 +72,16 @@ class WorkflowTools:
                 )
                 workflow = MCPWorkflow.from_orm(db_workflow)
 
-            # Start the workflow
-            workflow_result = await self.workflow_orchestrator.start_workflow(workflow.id)
+            # Start the workflow with real SpiffWorkflow
+            workflow_id = await self.workflow_orchestrator.create_workflow("research_workflow", parameters or {})
+            workflow_result = await self.workflow_orchestrator.execute_workflow_step(workflow_id)
 
             return {
-                "workflow_id": workflow.id,
+                "workflow_id": workflow_id,
                 "workflow_type": workflow_type,
-                "status": workflow_result.get("status", "started"),
-                "current_step": workflow_result.get("current_step", "initializing"),
-                "progress": workflow_result.get("progress", 0.0),
+                "status": "started",
+                "current_step": "initializing",
+                "progress": 0.0,
                 "parameters": parameters or {},
                 "priority": priority
             }
@@ -218,49 +218,8 @@ class WorkflowTools:
             }
 
     def _get_bpmn_template(self, workflow_type: str) -> dict[str, Any]:
-        """Get BPMN template for workflow type"""
-
-        templates = {
-            "research_discovery": {
-                "process": {
-                    "id": "research_discovery",
-                    "name": "Research Discovery Workflow"
-                },
-                "tasks": [
-                    {"id": "topic_analysis", "name": "Topic Analysis"},
-                    {"id": "source_discovery", "name": "Source Discovery"},
-                    {"id": "content_ingestion", "name": "Content Ingestion"},
-                    {"id": "semantic_analysis", "name": "Semantic Analysis"},
-                    {"id": "connection_mapping", "name": "Connection Mapping"},
-                    {"id": "report_generation", "name": "Report Generation"}
-                ]
-            },
-            "content_analysis": {
-                "process": {
-                    "id": "content_analysis",
-                    "name": "Content Analysis Workflow"
-                },
-                "tasks": [
-                    {"id": "content_parsing", "name": "Content Parsing"},
-                    {"id": "semantic_embedding", "name": "Semantic Embedding"},
-                    {"id": "quality_assessment", "name": "Quality Assessment"},
-                    {"id": "relevance_scoring", "name": "Relevance Scoring"},
-                    {"id": "summary_generation", "name": "Summary Generation"}
-                ]
-            },
-            "connection_mapping": {
-                "process": {
-                    "id": "connection_mapping",
-                    "name": "Connection Mapping Workflow"
-                },
-                "tasks": [
-                    {"id": "note_analysis", "name": "Note Analysis"},
-                    {"id": "semantic_comparison", "name": "Semantic Comparison"},
-                    {"id": "connection_scoring", "name": "Connection Scoring"},
-                    {"id": "link_creation", "name": "Link Creation"},
-                    {"id": "visualization_generation", "name": "Visualization Generation"}
-                ]
-            }
-        }
-
-        return templates.get(workflow_type, {})
+        """Get BPMN template for workflow type - now uses real BPMN files"""
+        
+        # For real SpiffWorkflow, we use actual BPMN files
+        # The workflow orchestrator will handle loading the BPMN file
+        return {"bpmn_file": "research_workflow.bpmn"}

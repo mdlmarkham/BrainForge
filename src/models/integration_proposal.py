@@ -15,6 +15,11 @@ class IntegrationProposalStatus:
     APPROVED = "approved"
     REJECTED = "rejected"
     INTEGRATED = "integrated"
+    IMPLEMENTED = "implemented"
+
+
+# Alias for backward compatibility
+ProposalStatus = IntegrationProposalStatus
 
 
 class IntegrationProposal(BaseEntity):
