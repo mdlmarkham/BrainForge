@@ -54,29 +54,17 @@ pytest tests/unit/ && ruff check src/ && mypy src/ && pytest --cov=src --cov-fai
 
 **Architecture:** Services layer for business logic, models for data, api/routes for endpoints, compliance for audit trails.
 
+**MCP Usage:** Use MCP tools for complex, multi-step tasks needing code context (refactoring, feature implementation). Use CLI for single operations.
+
+**Beads Usage:** Track strategic work (multi-session, dependencies, discovered work). Use `bd create` vs TodoWrite based on persistence needs.
+
 ## Landing the Plane (Session Completion)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**CRITICAL**: Work is NOT complete until `git push` succeeds. Mandatory session end workflow:
+1. File issues for remaining work
+2. Run quality gates - MUST pass
+3. Update/close bd issues  
+4. Sync and push: `git pull --rebase && bd sync && git push`
+5. Verify clean: `git status` shows "up to date"
 
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** - Tests, linters, builds MUST pass
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds
-
+Use 'bd' for task tracking

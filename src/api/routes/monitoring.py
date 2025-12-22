@@ -3,9 +3,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.dependencies import DatabaseSession
+from src.api.dependencies import CurrentUser, DatabaseSession
 from src.models.orm.user import User
-from src.models.role import Permission, UserRole
+from src.models.role import Permission, PermissionCheck, UserRole
 from src.services.monitoring import HealthCheckService, get_structured_logger
 from src.services.rbac import get_rbac_service
 from src.services.metrics.research_metrics import ResearchMetricsCollector
@@ -51,7 +51,7 @@ async def database_health_check(session: AsyncSession = DatabaseSession):
 @router.get("/metrics", summary="System metrics")
 async def get_metrics(
     session: AsyncSession = DatabaseSession,
-    current_user: User = Depends(lambda: None)  # Placeholder for auth
+    current_user: User = CurrentUser
 ):
     """Get comprehensive system metrics (requires admin permissions)."""
     # Check permissions - only admins can access detailed metrics

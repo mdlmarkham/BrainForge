@@ -112,3 +112,4 @@ mcp-cache/
 mcp-sessions/
 mcp-workflows/
 .spiffworkflow-cache/
+node_modules
