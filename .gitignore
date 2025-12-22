@@ -113,3 +113,14 @@ mcp-sessions/
 mcp-workflows/
 .spiffworkflow-cache/
 node_modules
+
+# Additional sensitive configuration files
+config/researcher_agent.env
+config/*.env
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+api_keys.*.env
+secrets.*.env
