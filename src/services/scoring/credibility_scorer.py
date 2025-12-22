@@ -73,15 +73,24 @@ class CredibilityScorer:
             weighted_score = sum(score * weight for score, weight in zip(scores, weights, strict=False))
             weighted_score = max(0.0, min(1.0, weighted_score))  # Clamp to 0-1 range
 
-            logger.debug(f"Credibility scoring for {content_source.url}: "
-                        f"domain={domain_score:.2f}, content={content_score:.2f}, "
-                        f"author={author_score:.2f}, validation={validation_score:.2f}, "
-                        f"final={weighted_score:.2f}")
+            parsed_url = urlparse(content_source.url)
+            safe_source = parsed_url.netloc or "<unknown-source>"
+            logger.debug(
+                f"Credibility scoring for source '{safe_source}': "
+                f"domain={domain_score:.2f}, content={content_score:.2f}, "
+                f"author={author_score:.2f}, validation={validation_score:.2f}, "
+                f"final={weighted_score:.2f}"
+            )
 
             return round(weighted_score, 2)
 
         except Exception as e:
-            logger.error(f"Error scoring credibility for {content_source.url}: {e}")
+            try:
+                parsed_url = urlparse(content_source.url)
+                safe_source = parsed_url.netloc or "<unknown-source>"
+            except Exception:
+                safe_source = "<unparseable-source>"
+            logger.error(f"Error scoring credibility for source '{safe_source}': {e}")
             return 0.5  # Default neutral score on error
 
     def _score_domain_reputation(self, url: str) -> float:
