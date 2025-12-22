@@ -75,8 +75,8 @@ class ObsidianService(BaseService):
         Sanitize and validate filename to prevent path traversal attacks.
         
         This method implements comprehensive path traversal protection by:
-        1. Converting to absolute path and normalizing
-        2. Restricting to safe character set
+        1. Normalizing and reducing the input to a single filename component
+        2. Restricting to a safe character set
         3. Preventing directory traversal patterns
         4. Validating file extension
         5. Ensuring the filename is not too long
@@ -107,13 +107,8 @@ class ObsidianService(BaseService):
             if pattern.lower() in filename.lower():
                 raise ValueError(f"Path traversal detected: pattern '{pattern}' not allowed")
         
-        # Normalize the path
         try:
-            # Convert to Path object and normalize
-            path_obj = Path(filename)
-            normalized = str(path_obj.resolve())
-            
-            # Check for dangerous characters
+            # Check for dangerous characters in the original input
             dangerous_chars = [
                 '\x00',  # Null byte
                 '<', '>', '|', '"',  # Shell injection chars 
@@ -127,7 +122,11 @@ class ObsidianService(BaseService):
             
             # Extract just the filename part to prevent path traversal
             # This ensures we only use the final component
-            safe_name = path_obj.name
+            safe_name = os.path.basename(filename)
+            # Normalize any remaining separators that may have slipped through
+            if '/' in safe_name or '\\' in safe_name:
+                safe_name = os.path.basename(safe_name)
+            
             
             # Validate the safe name more strictly
             if not safe_name or safe_name in ['.', '..']:
@@ -157,7 +156,7 @@ class ObsidianService(BaseService):
             # and not any path components
             if '/' in safe_name or '\\' in safe_name:
                 # Somehow path separators got through, extract just the name
-                safe_name = Path(safe_name).name
+                safe_name = os.path.basename(safe_name)
                 if not safe_name:
                     raise ValueError("Invalid filename after sanitization")
             
